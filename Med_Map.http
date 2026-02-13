@@ -1,6 +1,0 @@
-@Med_Map_HostAddress = http://localhost:5136
-
-GET {{Med_Map_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
