@@ -20,7 +20,7 @@ namespace Med_Map.Models
         [Required]
         public int Mode { get; set; }
         [Required]
-        public JsonContent ContextHistory { get; set; }
+        public string ContextHistory { get; set; }
         [Required]
         public DateTime CreatedAt { get; set; }
         #region foreign keys
