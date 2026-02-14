@@ -6,7 +6,7 @@ namespace Med_Map.Models
     public class PharmacyInventory
     {
         [Key]
-        public Guid Id { get; set; } = new Guid();
+        public Guid Id { get; set; } = Guid.NewGuid();
         [Required]
         [Column(TypeName = "decimal(18,2)")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
@@ -18,6 +18,7 @@ namespace Med_Map.Models
         public DateOnly ExpiryDate { get; set; }
         [NotMapped]
         public bool IsAvailable => StockQuantity > 0 && ExpiryDate > DateOnly.FromDateTime(DateTime.Now);
+        #region foreign keys
         [Required]
         public Guid PharmacyId { get; set; }
         [ForeignKey(nameof(PharmacyId))]
@@ -29,6 +30,7 @@ namespace Med_Map.Models
         public Guid? LinkedAlternativeId { get; set; }
         [ForeignKey(nameof(LinkedAlternativeId))]
         public virtual PharmacyInventory? LinkedAlternative { get; set; }
+        #endregion
 
     }
 }

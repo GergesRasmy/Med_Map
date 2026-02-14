@@ -34,8 +34,9 @@ namespace Med_Map.Models
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public List<string> PhoneNumbers { get; set; }
-
+        #region Navigation Properties
         public virtual Customer? Customer { get; set; }
         public virtual Pharmacy? Pharmacy { get; set; }
+        #endregion
     }
 }

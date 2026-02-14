@@ -5,7 +5,7 @@ namespace Med_Map.Models
     public class MedicineMaster
     {
         [Key]
-        public Guid Id { get; set; } = new Guid();
+        public Guid Id { get; set; } = Guid.NewGuid();
         [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
