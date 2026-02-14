@@ -9,7 +9,7 @@ namespace Med_Map.Models
     public class Pharmacy
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
@@ -17,19 +17,23 @@ namespace Med_Map.Models
         [Required]
         public string LicenseNumber { get; set; }
         [Required]
-        [RegularExpression(@"(\-?\d+(\.\d+)?),\s*(\-?\d+(\.\d+)?)",ErrorMessage ="Coordinates are in wrong format")]
         public Point Location { get; set; }
         [Required]
-        [RegularExpression(@"^(?:0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$", ErrorMessage = "Invalid time format (HH:mm).")]
+        [Range(typeof(TimeSpan), "00:00", "23:59", ErrorMessage = "opening time must be between 00:00 and 23:59")]
         public TimeSpan OpeningTime { get; set; }
         [Required]
-        [RegularExpression(@"^(?:0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$", ErrorMessage = "Invalid time format (HH:mm).")]
-        public TimeSpan CloseingTime { get; set; }
+        [Range(typeof(TimeSpan), "00:00", "23:59", ErrorMessage = "Closing time must be between 00:00 and 23:59")]
+        public TimeSpan ClosingTime { get; set; }
         [Required]
         public bool Is24Hours { get; set; }
         [Required]
         [Range(0, 5, ErrorMessage = "Rating must be between 0 and 5")]
         public double Rating { get; set; }
+        [Required]
+        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
+        public List<string> PhoneNumbers { get; set; }
+        [ForeignKey("User")]
+        public Guid UserId { get; set; }
 
 
     }
