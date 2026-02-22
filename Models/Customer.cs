@@ -14,11 +14,6 @@ namespace Med_Map.Models
         public string? MedicalHistory { get; set; }
         [Required]
         public List<Point> SavedLocations { get; set; }
-        #region foreign keys
-        [Required]
-        public Guid UserId { get; set; }
-        [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; }
-        #endregion
+      
     }
 }

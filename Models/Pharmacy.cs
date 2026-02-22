@@ -32,12 +32,7 @@ namespace Med_Map.Models
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public List<string> PhoneNumbers { get; set; }
-        #region foreign keys
-        [Required]
-        public Guid UserId { get; set; }
-        [ForeignKey(nameof(UserId))] 
-        public virtual User User { get; set; }
-        #endregion
+     
 
     }
 }

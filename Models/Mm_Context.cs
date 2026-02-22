@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace Med_Map.Models
 {
-    public class Mm_Context : DbContext
+    public class Mm_Context : IdentityDbContext<ApplicationUser>
     {
         #region SETS
         public DbSet<AiChatRequest> AiChatRequest { get; set; }
@@ -18,22 +19,17 @@ namespace Med_Map.Models
         public DbSet<Recommendation> Recommendation { get; set; }
         public DbSet<Wallet> Wallet { get; set; }
         public DbSet<WithdrawalRequest> WithdrawalRequest { get; set; }
-        public DbSet<User> User { get; set; }
         #endregion
         #region constructor
-        public Mm_Context()
+        public Mm_Context(): base()
+        {
+            
+        }
+        public Mm_Context(DbContextOptions options):base(options)
         {
             
         }
         #endregion
-        #region connection string
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlServer
-            ("Data Source=.;Initial Catalog=Med_Map;Integrated Security=True;Encrypt=False;Trust Server Certificate=True", x => x.UseNetTopologySuite());
-            base.OnConfiguring(optionsBuilder);
-
-        }
-        #endregion
+    
     }
 }
