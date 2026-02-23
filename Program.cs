@@ -26,6 +26,9 @@ public partial class Program
         builder.Services.AddScoped<IOtpRepository, OtpRepository>();
         builder.Services.AddScoped<ISessionRepository, SessionRepository>();
         #endregion
+        #region service registration
+        builder.Services.AddScoped<IEmailService, EmailService>();
+        #endregion
 
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {
