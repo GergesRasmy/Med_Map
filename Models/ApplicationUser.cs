@@ -7,6 +7,7 @@ namespace Med_Map.Models
         public string? AvatarUrl { get; set; }
         [Required]
         public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         #region Navigation Properties
         public virtual Customer? Customer { get; set; }

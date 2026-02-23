@@ -4,6 +4,7 @@ using Med_Map.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 
@@ -12,9 +13,11 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     [DbContext(typeof(Mm_Context))]
-    partial class Mm_ContextModelSnapshot : ModelSnapshot
+    [Migration("20260223113405_otp")]
+    partial class otp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,7 +57,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("AiChatRequest", (string)null);
+                    b.ToTable("AiChatRequest");
                 });
 
             modelBuilder.Entity("Med_Map.Models.AiChatResponse", b =>
@@ -83,7 +86,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("AiChatResponse", (string)null);
+                    b.ToTable("AiChatResponse");
                 });
 
             modelBuilder.Entity("Med_Map.Models.AiChatSession", b =>
@@ -102,7 +105,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("AiChatSession", (string)null);
+                    b.ToTable("AiChatSession");
                 });
 
             modelBuilder.Entity("Med_Map.Models.ApplicationUser", b =>
@@ -213,7 +216,7 @@ namespace Med_Map.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customer", (string)null);
+                    b.ToTable("Customer");
                 });
 
             modelBuilder.Entity("Med_Map.Models.DoctorRequest", b =>
@@ -245,7 +248,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("PharmacyId");
 
-                    b.ToTable("DoctorRequest", (string)null);
+                    b.ToTable("DoctorRequest");
                 });
 
             modelBuilder.Entity("Med_Map.Models.MedicineMaster", b =>
@@ -278,7 +281,7 @@ namespace Med_Map.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MedicineMaster", (string)null);
+                    b.ToTable("MedicineMaster");
                 });
 
             modelBuilder.Entity("Med_Map.Models.OrderItem", b =>
@@ -305,7 +308,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderItem", (string)null);
+                    b.ToTable("OrderItem");
                 });
 
             modelBuilder.Entity("Med_Map.Models.Orders", b =>
@@ -342,7 +345,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("PharmacyId");
 
-                    b.ToTable("Orders", (string)null);
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("Med_Map.Models.OtpCode", b =>
@@ -379,7 +382,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("OtpCodes", (string)null);
+                    b.ToTable("OtpCodes");
                 });
 
             modelBuilder.Entity("Med_Map.Models.Pharmacy", b =>
@@ -419,7 +422,7 @@ namespace Med_Map.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Pharmacy", (string)null);
+                    b.ToTable("Pharmacy");
                 });
 
             modelBuilder.Entity("Med_Map.Models.PharmacyInventory", b =>
@@ -454,7 +457,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("PharmacyId");
 
-                    b.ToTable("PharmacyInventory", (string)null);
+                    b.ToTable("PharmacyInventory");
                 });
 
             modelBuilder.Entity("Med_Map.Models.Recommendation", b =>
@@ -486,40 +489,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("ResponseId");
 
-                    b.ToTable("Recommendation", (string)null);
-                });
-
-            modelBuilder.Entity("Med_Map.Models.UserSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JwtId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JwtId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserSession", (string)null);
+                    b.ToTable("Recommendation");
                 });
 
             modelBuilder.Entity("Med_Map.Models.Wallet", b =>
@@ -541,7 +511,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("PharmacyId");
 
-                    b.ToTable("Wallet", (string)null);
+                    b.ToTable("Wallet");
                 });
 
             modelBuilder.Entity("Med_Map.Models.WithdrawalRequest", b =>
@@ -574,7 +544,7 @@ namespace Med_Map.Migrations
 
                     b.HasIndex("PharmacyId");
 
-                    b.ToTable("WithdrawalRequest", (string)null);
+                    b.ToTable("WithdrawalRequest");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -860,17 +830,6 @@ namespace Med_Map.Migrations
                         .IsRequired();
 
                     b.Navigation("Response");
-                });
-
-            modelBuilder.Entity("Med_Map.Models.UserSession", b =>
-                {
-                    b.HasOne("Med_Map.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Med_Map.Models.Wallet", b =>
