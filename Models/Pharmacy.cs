@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using NetTopologySuite.Geometries;
 
 namespace Med_Map.Models
 {
@@ -32,7 +31,11 @@ namespace Med_Map.Models
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public List<string> PhoneNumbers { get; set; }
-     
+        [Required]
+        public bool HaveDelivary { get; set; }
+        [Required]
+        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
+        public string PharmacistPhoneNumber { get; set; }
 
     }
 }
