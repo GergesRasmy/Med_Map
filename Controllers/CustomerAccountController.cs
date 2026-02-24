@@ -168,9 +168,9 @@ namespace Med_Map.Controllers
         }
 
         [HttpPost("RequestNewOtp")]      //api/CustomerAccount/requestnewotp
-        public async Task<IActionResult> RequestNewOtp([FromBody] string email)
+        public async Task<IActionResult> RequestNewOtp([FromBody] ResendOtpDto model)
         {
-            var user = await userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByEmailAsync(model.email);
             if (user == null) return BadRequest("User not found.");
 
             var otpCode = new Random().Next(100000, 999999).ToString();

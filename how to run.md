@@ -17,7 +17,8 @@ c)Update the Database:
 If you used Entity Framework (EF) Core, they need to create the local database schema.
 --dotnet ef database update--
 
-#3. Running the App
-You can simply press F5 in Visual Studio
+#3. calling the API
+	http://localhost:5136/api/"controller name"/"action name"/
+	Content-Type: application/json
+	check the customer account controller for more details about the available endpoints and their expected APIs and Parameters.
 
-Once it's running, they should look for the Swagger UI (usually at https://localhost:<port>/swagger) to test the endpoints.
