@@ -25,6 +25,7 @@ public partial class Program
         #region repos registration
         builder.Services.AddScoped<IOtpRepository, OtpRepository>();
         builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+        builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
         #endregion
         #region service registration
         builder.Services.AddScoped<IEmailService, EmailService>();

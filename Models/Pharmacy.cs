@@ -37,5 +37,16 @@ namespace Med_Map.Models
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public string PharmacistPhoneNumber { get; set; }
 
+        [Required]
+        public string LicenseImageUrl { get; set; }
+        [Required]
+        public string NationalIdUrl { get; set; }
+
+        // --- Identity Link ---
+        [Required]
+        public string ApplicationUserId { get; set; }
+        [ForeignKey("ApplicationUserId")]
+        public ApplicationUser User { get; set; } 
+
     }
 }

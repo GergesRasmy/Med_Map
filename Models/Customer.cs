@@ -12,8 +12,12 @@ namespace Med_Map.Models
         [Range(typeof(DateOnly), "01/01/1900", "01/01/2026", ErrorMessage = "Date must be in the format DD/MM/YYYY")]
         public DateOnly BirthDate { get; set; }
         public string? MedicalHistory { get; set; }
+
+        // --- Identity Link ---
         [Required]
-        public List<Point> SavedLocations { get; set; }
-      
+        public string ApplicationUserId { get; set; } 
+        [ForeignKey("ApplicationUserId")]
+        public ApplicationUser User { get; set; } 
+
     }
 }
