@@ -20,5 +20,5 @@ If you used Entity Framework (EF) Core, they need to create the local database s
 #3. calling the API
 	http://localhost:5136/api/"controller name"/"action name"/
 	Content-Type: application/json
-	check the customer account controller for more details about the available endpoints and their expected APIs and Parameters.
+	check the account controller for more details about the available endpoints and their expected APIs and Parameters.
 
