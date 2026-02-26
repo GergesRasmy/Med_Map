@@ -1,7 +1,9 @@
-﻿namespace Med_Map.DTO
+﻿using System.Text.Json.Serialization;
+
+namespace Med_Map.DTO
 {
     public class ResendOtpDto
     {
-        public string Email { get; set; }
+        public string email { get; set; }
     }
 }

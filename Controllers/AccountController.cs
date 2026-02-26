@@ -33,26 +33,26 @@ namespace Med_Map.Controllers
             this.emailService = emailService;
         }
 
-        [HttpPost("RegisterPharmacy")]           //api/Account/RegisterPharmacy
-        public async Task<IActionResult> RegisterPharmacy([FromForm] PharmacyRegisterDTO model)
+        [HttpPost("registerPharmacy")]           //api/Account/registerPharmacy
+        public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);     // Check if the model state is valid
 
             if (!model.TermConditions) return BadRequest("Accept terms to proceed.");
 
             // Check if the user already exists
-            if (await userManager.FindByEmailAsync(model.Email) != null) return BadRequest("Email already in use.");
+            if (await userManager.FindByEmailAsync(model.email) != null) return BadRequest("Email already in use.");
 
             // Save Images to local folder (wwwroot/uploads)
-            string pharmacyImagePath = await SaveFile(model.NationalId, "National_Id");
-            string licenseImagePath = await SaveFile(model.LicenseImage, "Pharmacy_License");
+            string pharmacyImagePath = await SaveFile(model.nationalId, "National_Id");
+            string licenseImagePath = await SaveFile(model.licenseImage, "Pharmacy_License");
 
             // Create the Identity User
             ApplicationUser appUser = new ApplicationUser
             {
-                UserName = model.PharmacyName,
-                Email = model.Email,
-                PhoneNumber = model.PharmacistPhoneNumber,
+                UserName = model.pharmacyName,
+                Email = model.email,
+                PhoneNumber = model.pharmacistPhoneNumber,
                 IsActive = false
             };
 
@@ -69,13 +69,13 @@ namespace Med_Map.Controllers
                     var pharmacy = new Pharmacy
                     {
                         ApplicationUserId = appUser.Id,
-                        PharmacyName = model.PharmacyName,
-                        LicenseNumber = model.LicenseNumber,
-                        Location = model.Location,
-                        OpeningTime = model.OpeningTime,
-                        ClosingTime = model.ClosingTime,
-                        Is24Hours = model.Is24Hours,
-                        PharmacistPhoneNumber = model.PharmacistPhoneNumber,
+                        PharmacyName = model.pharmacyName,
+                        LicenseNumber = model.licenseNumber,
+                        Location = model.location,
+                        OpeningTime = model.openingTime,
+                        ClosingTime = model.closingTime,
+                        Is24Hours = model.is24Hours,
+                        PharmacistPhoneNumber = model.pharmacistPhoneNumber,
                         NationalIdUrl = pharmacyImagePath,
                         LicenseImageUrl = licenseImagePath
                     };
@@ -89,31 +89,36 @@ namespace Med_Map.Controllers
                 {
                     // If profile creation fails, delete the Identity user so they can try again
                     await userManager.DeleteAsync(appUser);
-                    return BadRequest(result.Errors);
+                    return BadRequest(new AccountResponseDTO<object> { success = false, message = "Registration failed during profile creation." });
                 }
             }
 
-            return BadRequest(result.Errors);
-            
+            return BadRequest(new AccountResponseDTO<object> { success = false, message = "Registration failed.", error = result.Errors });
         }
 
-
-        [HttpPost("RegisterCustomer")]           //api/Account/RegisterCustomer
-        public async Task<IActionResult> RegisterCustomer(CustomerRegisterDTO model)
+        [HttpPost("registerCustomer")]           //api/Account/registerCustomer
+        public async Task<IActionResult> registerCustomer(CustomerRegisterDTO model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);                 // Check if the model state is valid
             // Check if the user has accepted the terms and conditions
             if (!model.TermConditions) return BadRequest("You must accept the terms and conditions to register.");
 
             // Check for existing Phonenumber
-            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.Phone))
-                return BadRequest("Phone number is already in use.");
+            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
+            {
+                return BadRequest(new AccountResponseDTO<object>
+                {
+                    success = false,
+                    code = "phone_already_used",
+                    message = "Phone number is already in use."
+                });
+            }
 
             ApplicationUser appUser = new ApplicationUser
             {
-                UserName = model.UserName,
-                Email = model.Email,
-                PhoneNumber = model.Phone,
+                UserName = model.userName,
+                Email = model.email,
+                PhoneNumber = model.phoneNumber,
                 IsActive = false // User is inactive until OTP is verified
             };
 
@@ -131,14 +136,14 @@ namespace Med_Map.Controllers
             return BadRequest(result.Errors);
         }
 
-        [HttpPost("VerifyOTP")]           //api/Account/verifyotp
-        public async Task<IActionResult> VerifyOTP([FromBody] VerifyOtpDTO model)
+        [HttpPost("verifyOtp")]           //api/Account/verifyotp
+        public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
-            var otpRecord = await otpRepository.FindValidOtpAsync(model.SessionId, model.Code);
+            var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
 
             if (otpRecord == null)
                 return BadRequest("Invalid or expired OTP code.");
@@ -182,30 +187,35 @@ namespace Med_Map.Controllers
 
             var token = GenerateToken(user, claims, jwtId,expirationTime);
 
-            return Ok(new
+            return Ok(new AccountResponseDTO<object>
             {
-                token = token,
-                expiration = expirationTime,
-                message = "Account verified and logged in successfully."
+                success = true,
+                message = "Account verified successfully.",
+                data = new
+                {
+                    token = GenerateToken(user, claims, jwtId, expirationTime),
+                    expiration = expirationTime,
+                    role = roles.FirstOrDefault()
+                }
             });
         }
 
-        [HttpPost("RequestNewOtp")]           //api/Account/requestnewotp
-        public async Task<IActionResult> RequestNewOtp([FromBody] ResendOtpDto model)
+        [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
+        public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
-            var user = await userManager.FindByEmailAsync(model.Email);
+            var user = await userManager.FindByEmailAsync(model.email);
             if (user == null) return BadRequest("User not found.");
 
             return await SendOtpInternal(user);
         }
 
         [HttpPost("Login")]           //api/PharmacyAccount/login
-        public async Task<IActionResult> LoginAsync([FromBody]LoginDTO userDto)
+        public async Task<IActionResult> Login([FromBody]LoginDTO userDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var dbUser = await userManager.FindByEmailAsync(userDto.Email);
-            if (dbUser == null || !await userManager.CheckPasswordAsync(dbUser, userDto.Password))
+            var dbUser = await userManager.FindByEmailAsync(userDto.email);
+            if (dbUser == null || !await userManager.CheckPasswordAsync(dbUser, userDto.password))
                 return BadRequest("Invalid email or password."); // If the user is not found or the password is incorrect, return an error message
 
             if (!dbUser.EmailConfirmed)         //User must be verified
@@ -213,7 +223,7 @@ namespace Med_Map.Controllers
 
             Guid sessionId = Guid.NewGuid();
             string jwtId = Guid.NewGuid().ToString(); 
-            DateTime expiration = DateTime.UtcNow.AddHours(1);
+            DateTime expirationTime = DateTime.UtcNow.AddHours(1);
 
             await sessionRepository.InsertAsync(new UserSession
             {
@@ -221,18 +231,26 @@ namespace Med_Map.Controllers
                 UserId = dbUser.Id,
                 JwtId = jwtId,
                 IsActive = true,
-                ExpiresAt = expiration
+                ExpiresAt = expirationTime
             });
 
             // Generate token using the helper
             var roles = await userManager.GetRolesAsync(dbUser);
             var claims = roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList();
             claims.Add(new Claim("sid", sessionId.ToString()));
+            string userRole = roles.FirstOrDefault();
 
-            return Ok(new
+            
+            return Ok(new AccountResponseDTO<object>
             {
-                token = GenerateToken(dbUser, claims, jwtId, expiration),
-                expiration = expiration
+                success = true,
+                message = "Login successfully.",
+                data = new
+                {
+                    token = GenerateToken(dbUser, claims, jwtId, expirationTime),
+                    expiration = expirationTime,
+                    role = roles.FirstOrDefault()
+                }
             });
         }
 
@@ -286,28 +304,40 @@ namespace Med_Map.Controllers
         {
             var otpCode = new Random().Next(100000, 999999).ToString();
             var otpSessionId = Guid.NewGuid();
-
+            var expirationTime = DateTime.UtcNow.AddMinutes(5);
             await otpRepository.InsertAsync(new OtpCode
             {
                 UserId = user.Id,
                 Code = otpCode,
                 SessionId = otpSessionId,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+                ExpiresAt = expirationTime,
                 IsUsed = false
             });
 
+            var response = new AccountResponseDTO<object>
+            {
+                
+                success = true,
+                code = "next_verify_otp",
+                message = "Logged in successfully, please verify using the otp.",
+                data = new
+                {
+                    expiration = expirationTime,
+                    sessionId = otpSessionId // Useful for the frontend to verify
+                }
+            };
             try
             {
                 string subject = "Med-Map Verification Code";
                 string body = $"<h2>Welcome to Med-Map!</h2><p>Your code is: <b>{otpCode}</b></p>";
                 await emailService.SendEmailAsync(user.Email, subject, body);
-
-                return Ok(new { message = "Registration successful. Verify your email.", sessionId = otpSessionId });
             }
-            catch
+            catch (Exception)
             {
-                return Ok(new { message = "User created, but email failed. Request a new OTP.", sessionId = otpSessionId, emailError = true });
+                response.message = "User created, but email failed to send.";
+                response.error = true;
             }
+            return Ok(response);
         }
     }
 }

@@ -3,9 +3,9 @@
     public class VerifyOtpDTO
     {
         [Required]
-        public Guid SessionId { get; set; } = Guid.NewGuid();
+        public Guid sessionId { get; set; } = Guid.NewGuid();
         [Required]
         [StringLength(6, MinimumLength = 6)]
-        public string Code { get; set; }
+        public string code { get; set; }
     }
 }
