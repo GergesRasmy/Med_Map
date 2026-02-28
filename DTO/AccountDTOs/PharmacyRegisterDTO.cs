@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Med_Map.DTO
+namespace Med_Map.DTO.AccountDTOs
 {
     public class PharmacyRegisterDTO
     {
@@ -15,10 +15,7 @@ namespace Med_Map.DTO
         [Required]
         [EmailAddress(ErrorMessage = "Invalid email format")]
         public string email { get; set; }
-        [JsonPropertyName("password")]
-        public string PasswordHash { get; set; }
-        public bool TermConditions { get; set; }
-
+        public string password { get; set; }
         public Point location { get; set; }
 
         [Required]

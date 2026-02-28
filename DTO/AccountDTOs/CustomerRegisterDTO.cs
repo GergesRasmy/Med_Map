@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Med_Map.DTO
+namespace Med_Map.DTO.AccountDTOs
 {
     public class CustomerRegisterDTO
     {
@@ -14,8 +14,6 @@ namespace Med_Map.DTO
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public string phoneNumber { get; set; }
-        [JsonPropertyName("password")]
-        public string PasswordHash { get; set; }
-        public bool TermConditions { get; set; }
+        public string password { get; set; }
     }
 }

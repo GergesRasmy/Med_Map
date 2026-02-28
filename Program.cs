@@ -1,4 +1,4 @@
-using Med_Map.Repositories;
+using Med_Map.Repositories.Account;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;

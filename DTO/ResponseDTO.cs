@@ -2,7 +2,7 @@
 
 namespace Med_Map.DTO
 {
-    public class AccountResponseDTO<T>
+    public class ResponseDTO<T>
     {
         public bool success { get; set; }
         public string code { get; set; } = string.Empty;

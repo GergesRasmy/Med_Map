@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Med_Map.DTO
+namespace Med_Map.DTO.AccountDTOs
 {
     public class ResendOtpDto
     {

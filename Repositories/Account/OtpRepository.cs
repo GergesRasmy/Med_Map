@@ -1,4 +1,4 @@
-﻿namespace Med_Map.Repositories
+﻿namespace Med_Map.Repositories.Account
 {
     public class OtpRepository : IOtpRepository
     {

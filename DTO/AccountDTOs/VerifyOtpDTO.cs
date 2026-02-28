@@ -1,4 +1,4 @@
-﻿namespace Med_Map.DTO
+﻿namespace Med_Map.DTO.AccountDTOs
 {
     public class VerifyOtpDTO
     {
@@ -6,6 +6,6 @@
         public Guid sessionId { get; set; } = Guid.NewGuid();
         [Required]
         [StringLength(6, MinimumLength = 6)]
-        public string code { get; set; }
+        public required string code { get; set; }
     }
 }
