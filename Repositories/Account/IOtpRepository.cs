@@ -1,4 +1,6 @@
-﻿namespace Med_Map.Repositories.Account
+﻿using Med_Map.Models.customer;
+
+namespace Med_Map.Repositories.Account
 {
     public interface IOtpRepository
     {

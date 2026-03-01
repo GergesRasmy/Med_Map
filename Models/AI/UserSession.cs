@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.AI
 {
     public class UserSession
     {

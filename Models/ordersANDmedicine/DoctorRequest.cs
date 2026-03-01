@@ -1,7 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Med_Map.Models.customer;
+using Med_Map.Models.pharmacy;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.ordersANDmedicine
 {
     public enum Services
     {

@@ -1,8 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Med_Map.Models.AI;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.ordersANDmedicine
 {
     public class Recommendation
     {

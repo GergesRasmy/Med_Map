@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.pharmacy
 {
 
     public class Pharmacy
@@ -15,6 +15,8 @@ namespace Med_Map.Models
         public string PharmacyName { get; set; }
         [Required]
         public string LicenseNumber { get; set; }
+        [Required]
+        public string? address { get; set; }
         [Required]
         public Point Location { get; set; }
         [Required]
@@ -29,19 +31,15 @@ namespace Med_Map.Models
         [Range(0, 5, ErrorMessage = "Rating must be between 0 and 5")]
         public double Rating { get; set; }
         [Required]
-        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
-        public List<string> PhoneNumbers { get; set; }
-        [Required]
         public bool HaveDelivary { get; set; }
         [Required]
+        public string doctorName { get; set; }
+        [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
-        public string PharmacistPhoneNumber { get; set; }
+        public string doctorPhoneNumber { get; set; }
 
-        [Required]
-        public string LicenseImageUrl { get; set; }
-        [Required]
-        public string NationalIdUrl { get; set; }
-
+        public ICollection<PharmacyDocument> Documents { get; set; } = new List<PharmacyDocument>();
+        public ICollection<PharmacyPhoneNumbers> PhoneNumbers { get; set; } = new List<PharmacyPhoneNumbers>();
         // --- Identity Link ---
         [Required]
         public string ApplicationUserId { get; set; }

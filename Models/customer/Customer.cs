@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using NetTopologySuite.Geometries;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.customer
 {
     public class Customer
     {

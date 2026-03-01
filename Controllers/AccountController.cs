@@ -45,16 +45,12 @@ namespace Med_Map.Controllers
             // Check if the user already exists
             if (await userManager.FindByEmailAsync(model.email) != null) return ErrorResponse("Email already in use.",ErrorCodes.EmailAlreadyInUse);
 
-            // Save Images to local folder (wwwroot/uploads)
-            string pharmacyImagePath = await SaveFile(model.nationalId, "National_Id");
-            string licenseImagePath = await SaveFile(model.licenseImage, "Pharmacy_License");
-
             // Create the Identity User
             ApplicationUser appUser = new ApplicationUser
             {
                 UserName = model.pharmacyName,
                 Email = model.email,
-                PhoneNumber = model.pharmacistPhoneNumber,
+                PhoneNumber = model.doctorPhoneNumber,
                 IsActive = false
             };
 
@@ -64,7 +60,7 @@ namespace Med_Map.Controllers
             {
                 try
                 {
-                    var location = new Point(model.Longitude, model.Latitude) { SRID = 4326 };
+                    var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
                     await userManager.AddToRoleAsync(appUser, "Pharmacy");      // Assign Role
                     var pharmacy = new Pharmacy                                 // Create Pharmacy Profile record
                     {
@@ -75,10 +71,27 @@ namespace Med_Map.Controllers
                         OpeningTime = model.openingTime,
                         ClosingTime = model.closingTime,
                         Is24Hours = model.is24Hours,
-                        PharmacistPhoneNumber = model.pharmacistPhoneNumber,
-                        NationalIdUrl = pharmacyImagePath,
-                        LicenseImageUrl = licenseImagePath
+                        HaveDelivary = model.delivaryAvailability,
+                        doctorName = model.doctorName,
+                        doctorPhoneNumber = model.doctorPhoneNumber,
+                        Documents = new List<PharmacyDocument>(),
+                        PhoneNumbers = new List<PharmacyPhoneNumbers>()
                     };
+                    foreach (var phone in model.pharmacyPhones)
+                    {
+                        pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers { Number = phone });
+                    }
+                    foreach (var file in model.nationalIds)
+                    {
+                        string path = await SaveFile(file, "National_Ids");
+                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                    }
+                    foreach (var file in model.licenseImages)
+                    {
+                        string path = await SaveFile(file, "Pharmacy_Licenses");
+                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                    }
+
                     await pharmacyRepository.InsertAsync(pharmacy);
                     return await SendOtpInternal(appUser);      // OTP Sending and return sessionId for verification
                 }

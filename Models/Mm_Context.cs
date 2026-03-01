@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Med_Map.Models.AI;
+using Med_Map.Models.customer;
+using Med_Map.Models.ordersANDmedicine;
+using Med_Map.Models.pharmacy;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection.Emit;
 

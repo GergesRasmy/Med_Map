@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Med_Map.Models
+namespace Med_Map.Models.ordersANDmedicine
 {
     public class MedicineMaster
     {
