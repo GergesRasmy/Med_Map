@@ -36,7 +36,11 @@ namespace Med_Map.Controllers
         [HttpPost("registerPharmacy")]           //api/Account/registerPharmacy
         public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
         {
-            if (!ModelState.IsValid) return ErrorResponse("Validation failed",ErrorCodes.ValidationError, ModelState);     // Check if the model state is valid
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }     // Check if the model state is valid
 
             // Check if the user already exists
             if (await userManager.FindByEmailAsync(model.email) != null) return ErrorResponse("Email already in use.",ErrorCodes.EmailAlreadyInUse);
@@ -60,13 +64,14 @@ namespace Med_Map.Controllers
             {
                 try
                 {
+                    var location = new Point(model.Longitude, model.Latitude) { SRID = 4326 };
                     await userManager.AddToRoleAsync(appUser, "Pharmacy");      // Assign Role
                     var pharmacy = new Pharmacy                                 // Create Pharmacy Profile record
                     {
                         ApplicationUserId = appUser.Id,
                         PharmacyName = model.pharmacyName,
                         LicenseNumber = model.licenseNumber,
-                        Location = model.location,
+                        Location = location,
                         OpeningTime = model.openingTime,
                         ClosingTime = model.closingTime,
                         Is24Hours = model.is24Hours,
@@ -84,13 +89,17 @@ namespace Med_Map.Controllers
                     return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed);
                 }
             }
-            return ErrorResponse("Registration failed during profile creation.",ErrorCodes.ProfileCreationFailed, result.Errors);
+            return ErrorResponse("Registration failed during profile creation.",ErrorCodes.ProfileCreationFailed, result.Errors.Select(e => e.Description));
         }
 
         [HttpPost("registerCustomer")]           //api/Account/registerCustomer
         public async Task<IActionResult> registerCustomer([FromBody]CustomerRegisterDTO model)
         {
-            if (!ModelState.IsValid) return ErrorResponse("Validation failed", ErrorCodes.ValidationError, ModelState);   // Check if the model state is valid
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }    // Check if the model state is valid
 
             // Check for existing Phonenumber
             if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
@@ -120,13 +129,17 @@ namespace Med_Map.Controllers
                     return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed);
                 }
             }
-            return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed,result.Errors); ;
+            return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed,result.Errors.Select(e => e.Description)); ;
         }
 
         [HttpPost("verifyOtp")]           //api/Account/verifyotp
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
-            if (!ModelState.IsValid) return ErrorResponse("Validation failed", ErrorCodes.ValidationError, ModelState);   // Check if the model state is valid
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }    // Check if the model state is valid
 
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
             var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
@@ -182,6 +195,11 @@ namespace Med_Map.Controllers
         [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
         public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }
             var user = await userManager.FindByEmailAsync(model.email);
             if (user == null) return ErrorResponse("User Not Found",ErrorCodes.UserNotFound);
 
@@ -191,7 +209,11 @@ namespace Med_Map.Controllers
         [HttpPost("login")]           //api/Account/login
         public async Task<IActionResult> login([FromBody]LoginDTO userDto)
         {
-            if (!ModelState.IsValid) return ErrorResponse("Validation failed", ErrorCodes.ValidationError, ModelState);     // Check if the model state is valid
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }      // Check if the model state is valid
 
             var dbUser = await userManager.FindByEmailAsync(userDto.email);
             if (dbUser == null || !await userManager.CheckPasswordAsync(dbUser, userDto.password))

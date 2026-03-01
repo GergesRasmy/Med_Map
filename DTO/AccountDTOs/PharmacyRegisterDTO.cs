@@ -16,7 +16,11 @@ namespace Med_Map.DTO.AccountDTOs
         [EmailAddress(ErrorMessage = "Invalid email format")]
         public string email { get; set; }
         public string password { get; set; }
-        public Point location { get; set; }
+        [Required]
+        public double Latitude { get; set; }
+
+        [Required]
+        public double Longitude { get; set; }
 
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]

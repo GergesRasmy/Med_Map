@@ -8,10 +8,12 @@ namespace Med_Map.Controllers
     [ApiController]
     public class ResponceBaseController : ControllerBase
     {
+        [NonAction]
         protected IActionResult SuccessResponse<T>(T data, string message = "Success", string code = null)
-            => Ok(new ResponseDTO<T> { success = true, message = message, code = code, data = data });
+            => Ok(new SuccessResponseDTO<T> { success = true, message = message, code = code, data = data });
 
+        [NonAction]
         protected IActionResult ErrorResponse(string message, string code = "Failed", object errors = null)
-            => BadRequest(new ResponseDTO<object> { success = false, message = message, code = code, error = errors });
+            => BadRequest(new ErrorResponseDTO<object> { success = false, message = message, code = code, error = errors });
     }
 }
