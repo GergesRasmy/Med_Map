@@ -50,7 +50,6 @@ namespace Med_Map.Controllers
             {
                 UserName = model.pharmacyName,
                 Email = model.email,
-                PhoneNumber = model.doctorPhoneNumber,
                 IsActive = false
             };
 
@@ -68,6 +67,7 @@ namespace Med_Map.Controllers
                         PharmacyName = model.pharmacyName,
                         LicenseNumber = model.licenseNumber,
                         Location = location,
+                        address=model.address,
                         OpeningTime = model.openingTime,
                         ClosingTime = model.closingTime,
                         Is24Hours = model.is24Hours,
@@ -79,7 +79,13 @@ namespace Med_Map.Controllers
                     };
                     foreach (var phone in model.pharmacyPhones)
                     {
-                        pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers { Number = phone });
+                        if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
+                        {
+                            pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers
+                            {
+                                Number = phone
+                            });
+                        }
                     }
                     foreach (var file in model.nationalIds)
                     {

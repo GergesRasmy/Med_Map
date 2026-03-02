@@ -11,5 +11,8 @@ global using Med_Map.Repositories;
 global using Med_Map.Services;
 global using Med_Map.ResponceCodes;
 global using Med_Map.DTO;
+global using Med_Map.DTO.AccountDTOs;
+global using Med_Map.DTO.ResponseDTOs;
+
 
 

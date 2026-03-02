@@ -7,7 +7,7 @@ using System.Text;
 
 public partial class Program
 {
-    private static void Main(string[] args)
+    private static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
        
@@ -69,7 +69,21 @@ public partial class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        using (var scope = app.Services.CreateScope())
+        {
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
+            // Define the roles you need
+            string[] roles = { "Pharmacy", "Customer" };
+
+            foreach (var roleName in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
+            }
+        }
         app.Run();
     }
 }

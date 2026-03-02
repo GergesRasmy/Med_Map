@@ -14,7 +14,6 @@ namespace Med_Map.DTO.AccountDTOs
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
         public string pharmacyName { get; set; }
         [Required]
-        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public List<string> pharmacyPhones { get; set; } = new List<string>();
 
         [Required]
