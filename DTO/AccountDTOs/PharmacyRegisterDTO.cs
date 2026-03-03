@@ -23,8 +23,8 @@ namespace Med_Map.DTO.AccountDTOs
         [Required]
         [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
         public string doctorPhoneNumber { get; set; }
-
-        public string? address { get; set; }
+        [Required]
+        public string address { get; set; }
         [Required]
         public double latitude { get; set; }
         [Required]

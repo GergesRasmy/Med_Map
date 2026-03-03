@@ -16,7 +16,7 @@ namespace Med_Map.Models.pharmacy
         [Required]
         public string LicenseNumber { get; set; }
         [Required]
-        public string? address { get; set; }
+        public string address { get; set; }
         [Required]
         public Point Location { get; set; }
         [Required]
