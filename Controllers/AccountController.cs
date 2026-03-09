@@ -79,7 +79,6 @@ namespace Med_Map.Controllers
                     };
                     foreach (var phone in model.pharmacyPhones)
                     {
-                        if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
                         {
                             pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers
                             {
