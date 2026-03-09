@@ -21,13 +21,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="MimeKit" Version="4.15.1" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON4STJ" Version="4.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.12.46" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="wwwroot\Uploads\National_Id\" />
-    <Folder Include="wwwroot\Uploads\Pharmacy_License\" />
   </ItemGroup>
 
 </Project>

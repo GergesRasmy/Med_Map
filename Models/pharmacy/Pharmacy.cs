@@ -7,8 +7,6 @@ namespace Med_Map.Models.pharmacy
 
     public class Pharmacy
     {
-        [Key]
-        public Guid Id { get; set; }=Guid.NewGuid();
         [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
@@ -41,10 +39,9 @@ namespace Med_Map.Models.pharmacy
         public ICollection<PharmacyDocument> Documents { get; set; } = new List<PharmacyDocument>();
         public ICollection<PharmacyPhoneNumbers> PhoneNumbers { get; set; } = new List<PharmacyPhoneNumbers>();
         // --- Identity Link ---
-        [Required]
-        public string ApplicationUserId { get; set; }
-        [ForeignKey("ApplicationUserId")]
-        public ApplicationUser User { get; set; } 
+        [Key, ForeignKey("User")]
+        public string ApplicationUserId { get; set; } 
+        public ApplicationUser User { get; set; }
 
     }
 }

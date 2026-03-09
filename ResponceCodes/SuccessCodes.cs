@@ -7,5 +7,7 @@
         public const string RegistrationPending = "registration_pending_otp"; 
         public const string AccountVerified = "account_activated";
 
+        // Data Retrieval
+        public const string DataRetrieved = "data_retrieved_successfully";
     }
 }

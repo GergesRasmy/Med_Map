@@ -17,10 +17,9 @@ namespace Med_Map.Models.ordersANDmedicine
         [Range(0, double.MaxValue, ErrorMessage = "Earnings can't be less than 0")]
         public decimal TotalEarnings { get; set; }
         #region foreign keys
-        [Required]
-        public Guid PharmacyId { get; set; }
-        [ForeignKey(nameof(PharmacyId))]
-        public virtual Pharmacy Pharmacy { get; set; }
+        public string PharmacyId { get; set; }
+        [ForeignKey("PharmacyId")]
+        public Pharmacy Pharmacy { get; set; }
         #endregion
 
     }

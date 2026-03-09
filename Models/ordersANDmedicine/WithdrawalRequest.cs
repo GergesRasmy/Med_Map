@@ -27,9 +27,9 @@ namespace Med_Map.Models.ordersANDmedicine
         [Required]
         public string ReceiptImage { get; set; }
         #region foreign keys
-        public Guid PharmacyId { get; set; }
-        [ForeignKey(nameof(PharmacyId))]
-        public virtual Pharmacy Pharmacy { get; set; }
+        public string PharmacyId { get; set; }
+        [ForeignKey("PharmacyId")]
+        public Pharmacy Pharmacy { get; set; }
         #endregion
     }
 }

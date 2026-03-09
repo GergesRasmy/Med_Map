@@ -20,10 +20,9 @@ namespace Med_Map.Models.pharmacy
         [NotMapped]
         public bool IsAvailable => StockQuantity > 0 && ExpiryDate > DateOnly.FromDateTime(DateTime.Now);
         #region foreign keys
-        [Required]
-        public Guid PharmacyId { get; set; }
-        [ForeignKey(nameof(PharmacyId))]
-        public virtual Pharmacy Pharmacy { get; set; }
+        public string PharmacyId { get; set; }
+        [ForeignKey("PharmacyId")]
+        public Pharmacy Pharmacy { get; set; }
         [Required]
         public Guid MedicineId { get; set; }
         [ForeignKey(nameof(MedicineId))]

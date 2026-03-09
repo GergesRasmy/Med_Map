@@ -1,6 +1,4 @@
-﻿using Med_Map.Models.AI;
-using Med_Map.Models.customer;
-using Med_Map.Models.ordersANDmedicine;
+﻿using Med_Map.Models.ordersANDmedicine;
 using Med_Map.Models.pharmacy;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +73,16 @@ namespace Med_Map.Models
                           .HasForeignKey(e => e.UserId)
                           .OnDelete(DeleteBehavior.Cascade);
                 });
+                builder.Entity<Customer>()
+                        .HasOne(c => c.User)
+                        .WithOne(u => u.Customer) 
+                        .HasForeignKey<Customer>(c => c.ApplicationUserId)
+                        .IsRequired();
+                builder.Entity<Pharmacy>()
+                        .HasOne(p => p.User)
+                        .WithOne(u => u.Pharmacy)
+                        .HasForeignKey<Pharmacy>(c => c.ApplicationUserId)
+                        .IsRequired();
             });
         }
         #endregion

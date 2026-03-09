@@ -1,5 +1,4 @@
-﻿using Med_Map.Models.AI;
-
+﻿
 namespace Med_Map.Repositories.Account
 {
     public class SessionRepository : ISessionRepository
@@ -13,7 +12,7 @@ namespace Med_Map.Repositories.Account
             await _context.SaveChangesAsync();
         }
 
-        public async Task<UserSession?> FindByIdAsync(string sessionId)
+        public async Task<UserSession?> FindByIdAsync(Guid sessionId)
         {
             return await _context.UserSession.FindAsync(sessionId);
         }

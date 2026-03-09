@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Med_Map.Models.customer
+namespace Med_Map.Models
 {
     public class OtpCode
     {

@@ -32,13 +32,14 @@ namespace Med_Map.Models.ordersANDmedicine
 
         #region foreign keys
         [Required]
-        public Guid PharmacyId { get; set; }
-        [ForeignKey(nameof(PharmacyId))]
-        public virtual Pharmacy Pharmacy { get; set; }
+        public string PharmacyApplicationUserId { get; set; }
+        [ForeignKey("PharmacyApplicationUserId")]
+        public Pharmacy pharmacy { get; set; }
+
         [Required]
-        public Guid CustomerId { get; set; }
-        [ForeignKey(nameof(CustomerId))]
-        public virtual Customer Customer { get; set; }
+        public string CustomerApplicationUserId { get; set; }
+        [ForeignKey("CustomerApplicationUserId")]
+        public Customer Customer { get; set; }
         #endregion
 
     }

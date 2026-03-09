@@ -11,10 +11,10 @@ namespace Med_Map.Models.AI
         [Required]
         public DateTime StartedAt { get; set; }
         #region foreign keys
-        [Required]
-        public Guid CustomerId { get; set; }
-        [ForeignKey(nameof(CustomerId))]
-        public virtual Customer Customer { get; set; }
+        public string CustomerId { get; set; }
+
+        [ForeignKey("CustomerId")]
+        public Customer Customer { get; set; }
         #endregion
     }
 }

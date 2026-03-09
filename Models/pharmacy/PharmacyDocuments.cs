@@ -21,8 +21,7 @@ namespace Med_Map.Models.pharmacy
         public DocumentType Type { get; set; }
 
         // Link back to Pharmacy
-        [Required]
-        public Guid PharmacyId { get; set; }
+        public string PharmacyId { get; set; }
         [ForeignKey("PharmacyId")]
         public Pharmacy Pharmacy { get; set; }
     }

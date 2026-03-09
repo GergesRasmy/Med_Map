@@ -1,5 +1,5 @@
-﻿using Med_Map.DTO.AccountDTOs;
-using Med_Map.Repositories.Account;
+﻿using Med_Map.DTO.CustomerDTOs;
+using Med_Map.DTO.PharmacyDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +13,7 @@ namespace Med_Map.Controllers
     [ApiController]
     public class AccountController : ResponceBaseController
     {
+        #region ctor
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration config;
@@ -20,9 +21,10 @@ namespace Med_Map.Controllers
         private readonly ISessionRepository sessionRepository;
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly IEmailService emailService;
+        private readonly ICustomerRepository customerRepository;
 
         public AccountController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration config
-                                            , IOtpRepository otpRepository, ISessionRepository sessionRepository,IPharmacyRepository pharmacyRepository,IEmailService emailService)
+                                            , IOtpRepository otpRepository, ISessionRepository sessionRepository,IPharmacyRepository pharmacyRepository,IEmailService emailService, ICustomerRepository customerRepository)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
@@ -31,7 +33,9 @@ namespace Med_Map.Controllers
             this.sessionRepository = sessionRepository;
             this.pharmacyRepository = pharmacyRepository;
             this.emailService = emailService;
+            this.customerRepository = customerRepository;
         }
+        #endregion
 
         [HttpPost("registerPharmacy")]           //api/Account/registerPharmacy
         public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
@@ -74,16 +78,23 @@ namespace Med_Map.Controllers
                         HaveDelivary = model.delivaryAvailability,
                         doctorName = model.doctorName,
                         doctorPhoneNumber = model.doctorPhoneNumber,
-                        Documents = new List<PharmacyDocument>(),
-                        PhoneNumbers = new List<PharmacyPhoneNumbers>()
+                        PhoneNumbers = new List<PharmacyPhoneNumbers>(),
+                        Documents = new List<PharmacyDocument>()
                     };
                     foreach (var phone in model.pharmacyPhones)
                     {
+                        if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
                         {
                             pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers
                             {
-                                Number = phone
+                                Number = phone,
+                                Pharmacy = pharmacy,
+                                PharmacyId = appUser.Id
                             });
+                        }
+                        else
+                        {
+                            return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
                         }
                     }
                     foreach (var file in model.nationalIds)
@@ -138,6 +149,12 @@ namespace Med_Map.Controllers
                 try
                 {
                     await userManager.AddToRoleAsync(appUser, "Customer");  // Assign the "Customer" role to the newly created user
+                    var customer = new Customer
+                    {
+                        ApplicationUserId = appUser.Id,
+                    };
+
+                    await customerRepository.InsertAsync(customer);
                     return await SendOtpInternal(appUser);      // OTP Sending and return sessionId for verification
                 }
                 catch (Exception)
@@ -317,6 +334,7 @@ namespace Med_Map.Controllers
             var otpCode = new Random().Next(100000, 999999).ToString();
             var otpSessionId = Guid.NewGuid();
             var expirationTime = DateTime.UtcNow.AddMinutes(5);
+
             await otpRepository.InsertAsync(new OtpCode
             {
                 UserId = user.Id,
@@ -337,7 +355,7 @@ namespace Med_Map.Controllers
                 string body = $"<h2>Welcome to Med-Map!</h2><p>Your code is: <b>{otpCode}</b></p>";
                 //await emailService.SendEmailAsync(user.Email, subject, body);
                 Console.WriteLine($"{subject} \n {body}");
-                return SuccessResponse(otpData, "Verification code sent, please verify using the otp.", SuccessCodes.RegistrationPending);
+                return SuccessResponse(otpData, $"Verification code sent, please verify using the otp.{otpCode}", SuccessCodes.RegistrationPending);
             }
             catch (Exception)
             {

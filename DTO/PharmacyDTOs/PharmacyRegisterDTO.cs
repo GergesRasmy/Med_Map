@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Med_Map.DTO.AccountDTOs
+namespace Med_Map.DTO.PharmacyDTOs
 {
     public class PharmacyRegisterDTO
     {
@@ -14,6 +14,7 @@ namespace Med_Map.DTO.AccountDTOs
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
         public string pharmacyName { get; set; }
         [Required]
+
         public List<string> pharmacyPhones { get; set; } = new List<string>();
 
         [Required]

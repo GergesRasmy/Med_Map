@@ -1,7 +1,7 @@
-using Med_Map.Repositories.Account;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using System.Text;
 
@@ -25,6 +25,7 @@ public partial class Program
         builder.Services.AddScoped<IOtpRepository, OtpRepository>();
         builder.Services.AddScoped<ISessionRepository, SessionRepository>();
         builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
+        builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         #endregion
         #region service registration
         builder.Services.AddScoped<IEmailService, EmailService>();
@@ -53,6 +54,7 @@ public partial class Program
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:SecurityKey"]))
             };
         });
+        builder.Services.AddAuthorization();
         builder.Services.Configure<ApiBehaviorOptions>(options =>
         {
             options.SuppressModelStateInvalidFilter = true;

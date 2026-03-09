@@ -4,6 +4,7 @@ using Med_Map.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 
@@ -12,9 +13,11 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     [DbContext(typeof(Mm_Context))]
-    partial class Mm_ContextModelSnapshot : ModelSnapshot
+    [Migration("20260308132116_relation")]
+    partial class relation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -92,9 +95,8 @@ namespace Med_Map.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("datetime2");
@@ -104,6 +106,39 @@ namespace Med_Map.Migrations
                     b.HasIndex("CustomerId");
 
                     b.ToTable("AiChatSession");
+                });
+
+            modelBuilder.Entity("Med_Map.Models.AI.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JwtId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JwtId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSession");
                 });
 
             modelBuilder.Entity("Med_Map.Models.ApplicationUser", b =>
@@ -186,7 +221,31 @@ namespace Med_Map.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Med_Map.Models.OtpCode", b =>
+            modelBuilder.Entity("Med_Map.Models.customer.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateOnly>("BirthDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("MedicalHistory")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId")
+                        .IsUnique();
+
+                    b.ToTable("Customer");
+                });
+
+            modelBuilder.Entity("Med_Map.Models.customer.OtpCode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -223,55 +282,6 @@ namespace Med_Map.Migrations
                     b.ToTable("OtpCodes");
                 });
 
-            modelBuilder.Entity("Med_Map.Models.UserSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JwtId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JwtId")
-                        .IsUnique()
-                        .HasFilter("[JwtId] IS NOT NULL");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserSession");
-                });
-
-            modelBuilder.Entity("Med_Map.Models.customer.Customer", b =>
-                {
-                    b.Property<string>("ApplicationUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateOnly>("BirthDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("MedicalHistory")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("ApplicationUserId");
-
-                    b.ToTable("Customer");
-                });
-
             modelBuilder.Entity("Med_Map.Models.ordersANDmedicine.DoctorRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -283,13 +293,11 @@ namespace Med_Map.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<string>("CustomerApplicationUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("PharmacyApplicationUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("ServiceType")
                         .HasColumnType("int");
@@ -299,9 +307,9 @@ namespace Med_Map.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerApplicationUserId");
+                    b.HasIndex("CustomerId");
 
-                    b.HasIndex("PharmacyApplicationUserId");
+                    b.HasIndex("PharmacyId");
 
                     b.ToTable("DoctorRequest");
                 });
@@ -375,9 +383,8 @@ namespace Med_Map.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CustomerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Point>("DeliveryAddress")
                         .IsRequired()
@@ -386,9 +393,8 @@ namespace Med_Map.Migrations
                     b.Property<int>("PaymentType")
                         .HasColumnType("int");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -446,9 +452,8 @@ namespace Med_Map.Migrations
                     b.Property<decimal>("CurrentBalance")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalEarnings")
                         .HasColumnType("decimal(18,2)");
@@ -473,9 +478,8 @@ namespace Med_Map.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ReceiptImage")
                         .IsRequired()
@@ -496,7 +500,12 @@ namespace Med_Map.Migrations
 
             modelBuilder.Entity("Med_Map.Models.pharmacy.Pharmacy", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ApplicationUserId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<TimeSpan>("ClosingTime")
@@ -539,7 +548,10 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("ApplicationUserId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId")
+                        .IsUnique();
 
                     b.ToTable("Pharmacy");
                 });
@@ -554,9 +566,8 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -583,9 +594,8 @@ namespace Med_Map.Migrations
                     b.Property<Guid>("MedicineId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
@@ -614,9 +624,8 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PharmacyId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -791,18 +800,7 @@ namespace Med_Map.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("Med_Map.Models.OtpCode", b =>
-                {
-                    b.HasOne("Med_Map.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Med_Map.Models.UserSession", b =>
+            modelBuilder.Entity("Med_Map.Models.AI.UserSession", b =>
                 {
                     b.HasOne("Med_Map.Models.ApplicationUser", "User")
                         .WithMany()
@@ -824,23 +822,34 @@ namespace Med_Map.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Med_Map.Models.customer.OtpCode", b =>
+                {
+                    b.HasOne("Med_Map.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Med_Map.Models.ordersANDmedicine.DoctorRequest", b =>
                 {
                     b.HasOne("Med_Map.Models.customer.Customer", "Customer")
                         .WithMany()
-                        .HasForeignKey("CustomerApplicationUserId")
+                        .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Med_Map.Models.pharmacy.Pharmacy", "pharmacy")
+                    b.HasOne("Med_Map.Models.pharmacy.Pharmacy", "Pharmacy")
                         .WithMany()
-                        .HasForeignKey("PharmacyApplicationUserId")
+                        .HasForeignKey("PharmacyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Customer");
 
-                    b.Navigation("pharmacy");
+                    b.Navigation("Pharmacy");
                 });
 
             modelBuilder.Entity("Med_Map.Models.ordersANDmedicine.OrderItem", b =>

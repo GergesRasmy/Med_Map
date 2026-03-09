@@ -1,11 +1,11 @@
-﻿using Med_Map.Models.pharmacy;
-
-namespace Med_Map.Repositories.Account
+﻿namespace Med_Map.Repositories
 {
     public interface IPharmacyRepository
     {
         Task InsertAsync(Pharmacy pharmacy);
-        Task<Pharmacy> GetByIdAsync(Guid id);
+        Task<Pharmacy?> GetByIdAsync(string id);
+        Task<List<Pharmacy>> GetByNameAsync(string name);
+
         Task UpdateAsync(Pharmacy pharmacy);
         Task SaveChangesAsync();
     }

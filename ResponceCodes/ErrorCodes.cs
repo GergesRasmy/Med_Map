@@ -14,6 +14,7 @@
         public const string EmailUnconfirmed = "email_not_verified";
         public const string UserNotFound = "user_not_found";
         public const string ActivitionFailed = "activition_failed";
+        public const string WrongFormat = "Wrong_Format";
 
 
         // OTP Logic

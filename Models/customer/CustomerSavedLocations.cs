@@ -13,9 +13,10 @@ namespace Med_Map.Models.customer
         public string? LocationName { get; set; } 
 
         // Foreign Key to Customer
-        [Required]
-        public Guid CustomerId { get; set; }
+        public string CustomerId { get; set; } 
+
         [ForeignKey("CustomerId")]
         public Customer Customer { get; set; }
+
     }
 }

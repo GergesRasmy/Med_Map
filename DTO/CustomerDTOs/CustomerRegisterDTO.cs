@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Med_Map.DTO.AccountDTOs
+namespace Med_Map.DTO.CustomerDTOs
 {
     public class CustomerRegisterDTO
     {
