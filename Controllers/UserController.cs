@@ -45,7 +45,7 @@ namespace Med_Map.Controllers
 
             var data = MapToPublicDto(phar);
               
-            return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
+            return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
         [HttpGet("privateGet")]//api/user/privateGet

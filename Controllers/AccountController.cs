@@ -54,6 +54,7 @@ namespace Med_Map.Controllers
             {
                 UserName = model.pharmacyName,
                 Email = model.email,
+                EmailConfirmed = false, 
                 IsActive = false
             };
 
@@ -139,7 +140,8 @@ namespace Med_Map.Controllers
                 UserName = model.userName,
                 Email = model.email,
                 PhoneNumber = model.phoneNumber,
-                IsActive = false // User is inactive until OTP is verified
+                EmailConfirmed = false,
+                IsActive = true 
             };
 
             IdentityResult result = await userManager.CreateAsync(appUser, model.password);
@@ -192,8 +194,8 @@ namespace Med_Map.Controllers
 
             //Activate the user account
             user.EmailConfirmed = true;
-            user.IsActive = true;
             var updateResult = await userManager.UpdateAsync(user);
+            
 
             if (!updateResult.Succeeded)
                 return ErrorResponse("Failed to activate user account.", ErrorCodes.ActivitionFailed);
