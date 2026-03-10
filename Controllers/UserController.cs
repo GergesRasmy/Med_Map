@@ -1,20 +1,21 @@
 ﻿using Med_Map.DTO.CustomerDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NetTopologySuite;
 using System.Security.Claims;
 
 namespace Med_Map.Controllers
 {
-    [Route("api/details")]
+    [Route("api/user")]
     [ApiController]
-    public class DetailsController : ResponceBaseController
+    public class UserController : ResponceBaseController
     {
         #region ctor
         private readonly ICustomerRepository customerRepository;
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly UserManager<ApplicationUser> userManager;
 
-        public DetailsController(ICustomerRepository customerRepository, IPharmacyRepository pharmacyRepository, UserManager<ApplicationUser> userManager)
+        public UserController(ICustomerRepository customerRepository, IPharmacyRepository pharmacyRepository, UserManager<ApplicationUser> userManager)
         {
             this.customerRepository = customerRepository;
             this.pharmacyRepository = pharmacyRepository;
@@ -22,7 +23,7 @@ namespace Med_Map.Controllers
         }
         #endregion
 
-        [HttpGet("customerPublicGet")]//api/details/customerPublicGet
+        [HttpGet("customerPublicGet")]//api/user/customerPublicGet
         public async Task<IActionResult> getCustomerPublicDetails([FromQuery] Guid id)
         {
             var customer = await customerRepository.GetByIdAsync(id.ToString());
@@ -34,42 +35,28 @@ namespace Med_Map.Controllers
             
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpGet("pharmacyPublicGet")]//api/details/pharmacypublicGet
+
+        [HttpGet("pharmacyPublicGet")]//api/user/pharmacypublicGet
         public async Task<IActionResult> getPharmacyPublicDetails([FromQuery] Guid id)
         {
             var phar = await pharmacyRepository.GetByIdAsync(id.ToString());
             if (phar == null)
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
-            List<string> LicenseImageUrls = new List<string>();
-            List<string> NationalIdUrls = new List<string>();
-            foreach (var doc in phar.Documents)
-            {
-                if (doc.Type == DocumentType.PharmacyLicense)
-                {
-                    LicenseImageUrls.Add(doc.FileUrl);
-                }
-                NationalIdUrls.Add(doc.FileUrl);
-            }
-            var data = new PublicPharmacyDetailsDTO
-            {
-                pharmacyName = phar.PharmacyName,
-                pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                doctorName = phar.doctorName,
-                address = phar.address,
-                cordinates = phar.Location,
-                openingTime = phar.OpeningTime,
-                closingTime = phar.ClosingTime,
-                is24Hours = phar.Is24Hours,
-                delivaryAvailability = phar.HaveDelivary
-            };
+            var data = MapToPublicDto(phar);
+              
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpGet("privateGet")]//api/details/privateGet
+
+        [HttpGet("privateGet")]//api/user/privateGet
         public async Task<IActionResult> getPrivateDetails()
         {
-            var (user, userId) = await GetAuthenticatedUserAsync();
-            if (user == null) return ErrorResponse("Invalid token or user not found", ErrorCodes.InvalidCredentials);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return ErrorResponse("Invalid token or user not found", ErrorCodes.InvalidCredentials);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("Invalid token or user not found", ErrorCodes.UserNotFound);
+
 
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
@@ -128,7 +115,8 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
             }
         }
-        [HttpGet("searchPharmacyByName")]
+
+        [HttpGet("searchPharmacyByName")]//api/user/searchPharmacyByName
         public async Task<IActionResult> SearchPharmacy([FromQuery]string name)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -152,15 +140,31 @@ namespace Med_Map.Controllers
             return SuccessResponse(result, "Search results retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
-
-        //helper method to get authenticated user id
-        private async Task<(ApplicationUser? User, string? UserId)> GetAuthenticatedUserAsync()
+        [HttpGet("nearestPharmacy")]
+        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null) return (null, null);
+            var NearestPharmacies = await pharmacyRepository.GetNearestPharmacyAsync(MyLocation.latitude,MyLocation.longitude,MyLocation.radiusInMeters);
+            var result = NearestPharmacies.Select(p=>MapToPublicDto(p)).ToList();
 
-            var user = await userManager.FindByIdAsync(userId);
-            return (user, userId);
+            return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
+
+        //helper method to convert pharmacy to DTO
+        private PublicPharmacyDetailsDTO MapToPublicDto(Pharmacy phar)
+        {
+            return new PublicPharmacyDetailsDTO
+            {
+                pharmacyName = phar.PharmacyName,
+                pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
+                doctorName = phar.doctorName,
+                address = phar.address,
+                cordinates = phar.Location,
+                openingTime = phar.OpeningTime,
+                closingTime = phar.ClosingTime,
+                is24Hours = phar.Is24Hours,
+                delivaryAvailability = phar.HaveDelivary
+            };
+        }
+
     }
 }

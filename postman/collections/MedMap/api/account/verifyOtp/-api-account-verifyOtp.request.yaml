@@ -1,0 +1,15 @@
+$kind: http-request
+name: /api/account/verifyOtp
+url: http://{{baseUrl}}/api/account/verifyOtp
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "sessionId": "b3fa366e-506d-20ae-0e6a-0dc77edde944",
+      "code": "string"
+    }
+examples: ./.resources/-api-account-verifyOtp.resources/examples
+order: 1000

@@ -1,4 +1,5 @@
 ﻿using Med_Map.Models.pharmacy;
+using NetTopologySuite;
 
 namespace Med_Map.Repositories
 {
@@ -36,6 +37,18 @@ namespace Med_Map.Repositories
                  p.doctorName.ToUpper().Contains(normalizedSearch) ||
                  p.User.NormalizedUserName.Contains(normalizedSearch)) 
              .ToListAsync();
+        }
+        public async Task<List<Pharmacy>> GetNearestPharmacyAsync(double latitude, double longitude, double radiusInMeters)
+        {
+            var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+            var myLocation = geometryFactory.CreatePoint(new Coordinate(longitude, latitude));
+
+            var pharmacies = await _context.Pharmacy
+                .Include(p => p.PhoneNumbers)
+                .Where(p => p.Location != null && p.Location.Distance(myLocation) <= (radiusInMeters))
+                .OrderBy(p => p.Location.Distance(myLocation))
+                .ToListAsync();
+            return pharmacies;
         }
 
         public async Task UpdateAsync(Pharmacy pharmacy)

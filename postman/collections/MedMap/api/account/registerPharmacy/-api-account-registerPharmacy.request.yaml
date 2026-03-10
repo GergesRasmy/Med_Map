@@ -1,0 +1,68 @@
+$kind: http-request
+name: /api/account/registerPharmacy
+url: http://{{baseUrl}}/api/account/registerPharmacy
+method: POST
+headers:
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    - key: email
+      value: string
+      description: ""
+    - key: password
+      value: string
+      description: ""
+    - key: pharmacyName
+      value: string
+      description: ""
+    - key: pharmacyPhones
+      value: string
+      description: ""
+    - key: pharmacyPhones
+      value: string
+      description: ""
+    - key: doctorName
+      value: string
+      description: ""
+    - key: doctorPhoneNumber
+      value: "01511607816"
+      description: ""
+    - key: address
+      value: string
+      description: ""
+    - key: latitude
+      value: "0"
+      description: ""
+    - key: longitude
+      value: "-995.362686e956"
+      description: ""
+    - key: openingTime
+      value: -378584029.67:43:29.4575195
+      description: ""
+    - key: closingTime
+      value: 2909.73:75:81.184
+      description: ""
+    - key: nationalIds
+      value: string
+      description: ""
+    - key: nationalIds
+      value: string
+      description: ""
+    - key: licenseNumber
+      value: string
+      description: ""
+    - key: licenseImages
+      value: string
+      description: ""
+    - key: licenseImages
+      value: string
+      description: ""
+    - key: is24Hours
+      value: "false"
+      description: ""
+    - key: delivaryAvailability
+      value: "false"
+      description: ""
+examples: ./.resources/-api-account-registerPharmacy.resources/examples
+order: 1000

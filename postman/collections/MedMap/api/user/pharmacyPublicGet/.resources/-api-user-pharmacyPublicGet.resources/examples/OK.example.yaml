@@ -1,0 +1,16 @@
+$kind: http-example
+request:
+  url: http://{{baseUrl}}/api/user/pharmacyPublicGet?id=5607dc61-a62d-6604-2bc4-c28f1af1784f
+  method: GET
+  queryParams:
+    id: 5607dc61-a62d-6604-2bc4-c28f1af1784f
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: ""
+order: 1000

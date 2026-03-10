@@ -1,0 +1,13 @@
+$kind: http-request
+name: /api/user/nearestPharmacy
+url: https://{{baseUrl}}/api/user/nearestPharmacy?latitude=0&longitude=0&radiusInMeters=1000
+method: GET
+queryParams:
+  latitude: "0"
+  longitude: "0"
+  radiusInMeters: "1000"
+body:
+  type: text
+  content: ""
+examples: ./.resources/-api-user-nearestPharmacy.resources/examples
+order: 1000

@@ -1,0 +1,15 @@
+$kind: http-request
+name: /api/account/login
+url: http://{{baseUrl}}/api/account/login
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "string",
+      "password": "string"
+    }
+examples: ./.resources/-api-account-login.resources/examples
+order: 1000

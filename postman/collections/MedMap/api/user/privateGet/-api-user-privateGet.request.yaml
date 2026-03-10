@@ -1,0 +1,9 @@
+$kind: http-request
+name: /api/user/privateGet
+url: http://{{baseUrl}}/api/user/privateGet
+method: GET
+body:
+  type: text
+  content: ""
+examples: ./.resources/-api-user-privateGet.resources/examples
+order: 1000

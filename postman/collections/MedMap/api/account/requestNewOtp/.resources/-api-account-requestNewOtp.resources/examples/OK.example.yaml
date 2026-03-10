@@ -1,0 +1,19 @@
+$kind: http-example
+request:
+  url: http://{{baseUrl}}/api/account/requestNewOtp
+  method: POST
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "email": "t/<@:.4x%V<X`m"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: ""
+order: 1000

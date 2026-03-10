@@ -1,0 +1,14 @@
+$kind: http-request
+name: /api/account/requestNewOtp
+url: http://{{baseUrl}}/api/account/requestNewOtp
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "t/<@:.4x%V<X`m"
+    }
+examples: ./.resources/-api-account-requestNewOtp.resources/examples
+order: 1000
