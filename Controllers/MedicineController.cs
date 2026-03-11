@@ -20,13 +20,17 @@ namespace Med_Map.Controllers
         }
         #endregion
         [HttpPost("add")]//api/medicine/add
-        [Authorize(Roles = "Pharmacy")]
-        public async Task<IActionResult> AddMedicine([FromBody] AddMedicineDTO medicine)
+        [Authorize(Roles = "Pharmacy")] //restrict access to only users with the "Pharmacy" role (you need pharmacy token)
+        public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
                 return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }
+            if (await medicineRepository.ExistsAsync(medicine.tradeName))
+            {
+                return ErrorResponse("A medicine with this trade name already exists.", ErrorCodes.ValidationError);
             }
             var newMedicine = new MedicineMaster
             {

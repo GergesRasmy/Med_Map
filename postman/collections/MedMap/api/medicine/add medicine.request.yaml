@@ -1,0 +1,47 @@
+$kind: http-request
+name: add medicine
+url: https://{{baseUrl}}/api/medicine/add
+method: POST
+body:
+  type: formdata
+  content:
+    - type: text
+      key: tradeName
+      value: antinal
+      description: ""
+      disabled: false
+    - type: text
+      key: genericName
+      value: antinal
+      description: ""
+      disabled: false
+    - type: text
+      key: manufacturer
+      value: antinalco
+      description: ""
+      disabled: false
+    - type: file
+      key: image
+      src:
+        - /C:/Users/gerge/OneDrive - FEE-MU/Pictures/Screenshots/Screenshot
+          2026-02-21 204134.png
+      description: ""
+      disabled: false
+    - type: text
+      key: isRestricted
+      value: "false"
+      description: ""
+      disabled: false
+    - type: text
+      key: price
+      value: "27.5"
+      description: ""
+      disabled: false
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiR1BoYXIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjgxNzZkMTc5LTdmZjUtNDZmMS1hYTMyLWQxNjgxNDk4MDM0YSIsImp0aSI6IjQ5OWUwNmM1LTY0YzUtNGQxYy05NDMwLTlhYTgyN2JhOTk3NSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlBoYXJtYWN5Iiwic2lkIjoiM2NhZjZlZjUtMGRhNC00YWU0LThjYmMtYzc0MGI4ZmFlNGZlIiwiZXhwIjoyMTMzMjU0MjkxLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjUxMzYvIiwiYXVkIjoiaHR0cDovL2xvY2FsaG9zdDo0MjAwLyJ9.l5wzClCpZTQy8Wzv_yTc84UUSnR_FKvTVDcH3YH8GzI
+settings:
+  disabledSystemHeaders: []
+examples: ./.resources\add medicine.resources\examples
+order: 3262773272248595

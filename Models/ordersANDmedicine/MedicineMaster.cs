@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Med_Map.Models.ordersANDmedicine
 {
+    [Index(nameof(TradeName), IsUnique = true)]
     public class MedicineMaster
     {
         [Key]

@@ -13,6 +13,11 @@
             _context.MedicineMaster.Add(medicine);
             await SaveChangesAsync();
         }
+        public async Task<bool> ExistsAsync(string tradeName)
+        {
+            return await _context.MedicineMaster
+                .AnyAsync(m => m.TradeName.ToLower() == tradeName.ToLower());
+        }
         public async Task<List<MedicineMaster>?> GetAllMedicineAsync()
         {
             return await _context.MedicineMaster.ToListAsync();

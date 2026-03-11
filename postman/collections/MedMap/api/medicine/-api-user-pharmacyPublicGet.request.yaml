@@ -1,0 +1,9 @@
+$kind: http-request
+name: /api/user/pharmacyPublicGet
+url: http://{{baseUrl}}/api/medicine/allMedicine
+method: GET
+body:
+  type: text
+  content: ""
+examples: ./.resources/-api-user-pharmacyPublicGet.resources/examples
+order: 4411680635932807
