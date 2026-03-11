@@ -32,7 +32,7 @@ namespace Med_Map.Controllers
 
             var user = await userManager.FindByIdAsync(customer.ApplicationUserId.ToString());
             var data = new PublicCustomerDetailsDTO { userName = user.UserName ,role ="Customer",id = Guid.Parse(customer.ApplicationUserId) };
-            
+
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
@@ -103,11 +103,11 @@ namespace Med_Map.Controllers
                     doctorName = phar.doctorName,
                     doctorPhoneNumber = phar.doctorPhoneNumber,
                     address = phar.address,
-                    cordinates = phar.Location,
+                    coordinates = phar.Location,
                     openingTime = phar.OpeningTime,
                     closingTime = phar.ClosingTime,
                     is24Hours = phar.Is24Hours,
-                    delivaryAvailability = phar.HaveDelivary,
+                    deliveryAvailability = phar.HaveDelivary,
                     licenseNumber = phar.LicenseNumber,
                     licenseImageUrls = LicenseImageUrls,
                     nationalIdUrls = NationalIdUrls
@@ -153,11 +153,11 @@ namespace Med_Map.Controllers
                 pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
                 doctorName = phar.doctorName,
                 address = phar.address,
-                cordinates = phar.Location,
+                coordinates = phar.Location,
                 openingTime = phar.OpeningTime,
                 closingTime = phar.ClosingTime,
                 is24Hours = phar.Is24Hours,
-                delivaryAvailability = phar.HaveDelivary
+                deliveryAvailability = phar.HaveDelivary
             };
         }
 

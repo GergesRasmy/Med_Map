@@ -8,11 +8,11 @@
         public List<string> pharmacyPhones { get; set; }
         public string doctorName { get; set; }
         public string address { get; set; }
-        public Point cordinates { get; set; }
+        public Point coordinates { get; set; }
         public TimeSpan openingTime { get; set; }
         public TimeSpan closingTime { get; set; }
         public bool is24Hours { get; set; }
-        public bool delivaryAvailability { get; set; }
+        public bool deliveryAvailability { get; set; }
         
     }
 }

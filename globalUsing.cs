@@ -20,6 +20,7 @@ global using Med_Map.DTO.OrderDTOs;
 global using Med_Map.DTO.AccountDTOs;
 global using Med_Map.DTO.ResponseDTOs;
 global using Med_Map.DTO.PharmacyDTOs;
+global using Med_Map.DTO.MedicineDTOs;
 
 
 

@@ -76,7 +76,7 @@ namespace Med_Map.Controllers
                         OpeningTime = model.openingTime,
                         ClosingTime = model.closingTime,
                         Is24Hours = model.is24Hours,
-                        HaveDelivary = model.delivaryAvailability,
+                        HaveDelivary = model.deliveryAvailability,
                         doctorName = model.doctorName,
                         doctorPhoneNumber = model.doctorPhoneNumber,
                         PhoneNumbers = new List<PharmacyPhoneNumbers>(),
@@ -98,15 +98,25 @@ namespace Med_Map.Controllers
                             return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
                         }
                     }
-                    foreach (var file in model.nationalIds)
+                    try
                     {
-                        string path = await SaveFile(file, "National_Ids");
-                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                        // Process National IDs
+                        foreach (var file in model.nationalIds)
+                        {
+                            string path = await SaveFile(file, "National_Ids");
+                            pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                        }
+
+                        // Process License Images
+                        foreach (var file in model.licenseImages)
+                        {
+                            string path = await SaveFile(file, "Pharmacy_Licenses");
+                            pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                        }
                     }
-                    foreach (var file in model.licenseImages)
+                    catch (Exception ex)
                     {
-                        string path = await SaveFile(file, "Pharmacy_Licenses");
-                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                        return ErrorResponse("File processing failed: ", ErrorCodes.ValidationError, ex.Message);
                     }
 
                     await pharmacyRepository.InsertAsync(pharmacy);
@@ -203,7 +213,7 @@ namespace Med_Map.Controllers
             //Create a Session record in the database
             Guid sessionId = Guid.NewGuid();
             string jwtId = Guid.NewGuid().ToString();
-            DateTime expirationTime = DateTime.UtcNow.AddHours(1);
+            DateTime expirationTime = DateTime.UtcNow.AddHours(100000);
 
             var session = new UserSession
             {
@@ -261,7 +271,7 @@ namespace Med_Map.Controllers
 
             Guid sessionId = Guid.NewGuid();
             string jwtId = Guid.NewGuid().ToString(); 
-            DateTime expirationTime = DateTime.UtcNow.AddHours(1);
+            DateTime expirationTime = DateTime.UtcNow.AddHours(100000);
 
             await sessionRepository.InsertAsync(new UserSession
             {
@@ -307,27 +317,38 @@ namespace Med_Map.Controllers
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }       
+        }
         // Helper method to Save incoming Images
-        private async Task<string> SaveFile(IFormFile file, string folderName)
+        private async Task<string?> SaveFile(IFormFile file, string folderName)
         {
             if (file == null || file.Length == 0) return null;
 
-            // Define path: wwwroot/uploads/
-            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", folderName);
+            //Size Validation (3 MB)
+            const long MaxFileSize = 3 * 1024 * 1024;
+            if (file.Length > MaxFileSize)
+                throw new Exception("File size exceeds the 3MB limit.");
 
+            //Extension/MIME Type Validation
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                throw new Exception("Invalid file type. Only JPG, PNG, and WebP are allowed.");
+
+            //Define and Ensure Directory
+            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", folderName);
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+            //Secure File Naming
+            string uniqueFileName = $"{Guid.NewGuid()}{extension}";
             string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
+            //Save the file
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(fileStream);
             }
 
-            // Return the relative path to store in DB
             return $"/uploads/{folderName}/{uniqueFileName}";
         }
         // Helper method to send otp

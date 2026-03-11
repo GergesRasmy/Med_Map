@@ -13,6 +13,10 @@
             _context.MedicineMaster.Add(medicine);
             await SaveChangesAsync();
         }
+        public async Task<List<MedicineMaster>?> GetAllMedicineAsync()
+        {
+            return await _context.MedicineMaster.ToListAsync();
+        }
         public async Task<MedicineMaster?> GetByIdAsync(string id)
         {
             return await _context.MedicineMaster.FirstAsync(c => c.Id == Guid.Parse(id));

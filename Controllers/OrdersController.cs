@@ -30,6 +30,10 @@ namespace Med_Map.Controllers
         [HttpPost("place")]//api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
+            if(!ModelState.IsValid) { 
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+            }
             //Parse the Enum (Validate Payment Option)
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
             {
@@ -112,7 +116,7 @@ namespace Med_Map.Controllers
             }).ToList();
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpGet] // api/order
+        [HttpGet] // api/order?id=
         public async Task<IActionResult> GetOrderById([FromQuery]string id)
         {
             //get the order from the database

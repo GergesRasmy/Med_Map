@@ -30,8 +30,6 @@ namespace Med_Map.DTO.PharmacyDTOs
         public double latitude { get; set; }
         [Required]
         public double longitude { get; set; }
-
-
         [Required]
         [Range(typeof(TimeSpan), "00:00", "23:59", ErrorMessage = "opening time must be between 00:00 and 23:59")]
         public TimeSpan openingTime { get; set; }
@@ -48,7 +46,7 @@ namespace Med_Map.DTO.PharmacyDTOs
         [Required]
         public bool is24Hours { get; set; }
         [Required]
-        public bool delivaryAvailability { get; set; }
+        public bool deliveryAvailability { get; set; }
 
 
     }

@@ -34,9 +34,7 @@ public partial class Program
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {
-            // Ensure Identity enforces unique emails
             options.User.RequireUniqueEmail = true;
-
         }).AddEntityFrameworkStores<Mm_Context>();
         builder.Services.AddAuthentication(options =>
         {
