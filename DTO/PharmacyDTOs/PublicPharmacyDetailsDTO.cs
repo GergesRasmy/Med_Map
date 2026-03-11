@@ -2,6 +2,8 @@
 {
     public class PublicPharmacyDetailsDTO
     {
+        public string role { get; set; }
+        public Guid id { get; set; }
         public string pharmacyName { get; set; }
         public List<string> pharmacyPhones { get; set; }
         public string doctorName { get; set; }

@@ -31,7 +31,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
 
             var user = await userManager.FindByIdAsync(customer.ApplicationUserId.ToString());
-            var data = new PublicCustomerDetailsDTO { userName = user.UserName };
+            var data = new PublicCustomerDetailsDTO { userName = user.UserName ,role ="Customer",id = Guid.Parse(customer.ApplicationUserId) };
             
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
@@ -68,6 +68,8 @@ namespace Med_Map.Controllers
 
                 var data = new CustomerDetailsDTO
                 {
+                    role = role,
+                    id = Guid.Parse(customer.ApplicationUserId),
                     birthDate = customer.BirthDate,
                     medicalHistory = customer.MedicalHistory,
                     userName = user.UserName,
@@ -93,6 +95,8 @@ namespace Med_Map.Controllers
                 }
                 var data = new PharmacyDetailsDTO
                 {
+                    role = role,
+                    id = Guid.Parse(phar.ApplicationUserId),
                     email = user.Email,
                     pharmacyName = phar.PharmacyName,
                     pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
@@ -124,18 +128,7 @@ namespace Med_Map.Controllers
 
             var pharmacies = await pharmacyRepository.GetByNameAsync(name);
 
-            var result = pharmacies.Select(p => new PublicPharmacyDetailsDTO
-            {
-                pharmacyName = p.PharmacyName,
-                pharmacyPhones = p.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                doctorName = p.doctorName,
-                address = p.address,
-                cordinates = p.Location,
-                openingTime = p.OpeningTime,
-                closingTime = p.ClosingTime,
-                is24Hours = p.Is24Hours,
-                delivaryAvailability = p.HaveDelivary
-            }).ToList();
+            var result = pharmacies.Select(p => MapToPublicDto(p)).ToList();
 
             return SuccessResponse(result, "Search results retrieved successfully", SuccessCodes.DataRetrieved);
         }
@@ -154,6 +147,8 @@ namespace Med_Map.Controllers
         {
             return new PublicPharmacyDetailsDTO
             {
+                role = "Pharmacy",
+                id = Guid.Parse(phar.ApplicationUserId),
                 pharmacyName = phar.PharmacyName,
                 pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
                 doctorName = phar.doctorName,

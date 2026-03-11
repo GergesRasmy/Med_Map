@@ -2,6 +2,8 @@
 {
     public class CustomerDetailsDTO
     {
+        public Guid id { get; set; }
+        public string role { get; set; }
         public DateOnly birthDate { get; set; }
         public string medicalHistory { get; set; }
         public string userName { get; set; }
