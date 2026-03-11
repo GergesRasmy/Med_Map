@@ -1,9 +1,9 @@
 $kind: http-request
 name: /api/user/pharmacyPublicGet
-url: http://{{baseUrl}}/api/user/pharmacyPublicGet?id=5607dc61-a62d-6604-2bc4-c28f1af1784f
+url: http://{{baseUrl}}/api/user/pharmacyPublicGet?id=a1bbe757-9306-425e-3b8f-f06454d6b1e6
 method: GET
 queryParams:
-  id: 5607dc61-a62d-6604-2bc4-c28f1af1784f
+  id: a1bbe757-9306-425e-3b8f-f06454d6b1e6
 body:
   type: text
   content: ""

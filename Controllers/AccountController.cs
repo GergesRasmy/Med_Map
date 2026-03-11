@@ -357,6 +357,7 @@ namespace Med_Map.Controllers
                 string body = $"<h2>Welcome to Med-Map!</h2><p>Your code is: <b>{otpCode}</b></p>";
                 //await emailService.SendEmailAsync(user.Email, subject, body);
                 Console.WriteLine($"{subject} \n {body}");
+                //remove {otpCode} from the response in production, it's only for testing purposes
                 return SuccessResponse(otpData, $"Verification code sent, please verify using the otp.{otpCode}", SuccessCodes.RegistrationPending);
             }
             catch (Exception)

@@ -23,5 +23,10 @@
 
         // Registration Flow
         public const string ProfileCreationFailed = "profile_creation_failed";
+
+        //orders
+        public const string InvalidInput = "invalid_input";
+        public const string DataNotFound = "data_not_found";
+        public const string InvalidAction = "invalid_action";
     }
 }

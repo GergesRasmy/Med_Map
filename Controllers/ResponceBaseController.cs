@@ -14,6 +14,12 @@ namespace Med_Map.Controllers
             => Ok(new SuccessResponseDTO<T> { success = true, message = message, code = code, data = data });
 
         [NonAction]
+        protected IActionResult SuccessResponse(string message, string code)
+        {
+            return Ok(new { Success = true, Message = message, Code = code });
+        }
+
+        [NonAction]
         protected IActionResult ErrorResponse(string message, string code = "Failed", object errors = null)
             => BadRequest(new ErrorResponseDTO<object> { success = false, message = message, code = code, error = errors });
     }

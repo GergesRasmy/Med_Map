@@ -8,7 +8,7 @@ body:
   type: json
   content: |-
     {
-      "sessionId": "b3fa366e-506d-20ae-0e6a-0dc77edde944",
+      "sessionId": "037ad267-dacf-a621-4024-471c138409b8",
       "code": "string"
     }
 examples: ./.resources/-api-account-verifyOtp.resources/examples

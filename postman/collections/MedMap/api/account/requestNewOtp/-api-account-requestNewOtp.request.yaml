@@ -8,7 +8,7 @@ body:
   type: json
   content: |-
     {
-      "email": "t/<@:.4x%V<X`m"
+      "email": "7yVL-LP@kxz)#?RU6F.en)4kOE\\="
     }
 examples: ./.resources/-api-account-requestNewOtp.resources/examples
 order: 1000

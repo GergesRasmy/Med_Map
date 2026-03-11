@@ -1,0 +1,36 @@
+$kind: http-request
+name: place order
+url: https://{{baseUrl}}/api/order/place
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"paymentOption\": \"Cash\",\r
+
+    \  \"longitude\": 10.1,\r
+
+    \  \"latitude\": 1,\r
+
+    \  \"pharmacyId\": \"15d380e9-eee9-4c10-a072-a22debd9dd13\",\r
+
+    \  \"items\": [\r
+
+    \    {\r
+
+    \      \"quantity\": 2,\r
+
+    \      \"medicineId\": \"09c5abef-ef6c-4369-a09a-d6b1e5a27760\"\r
+
+    \    }\r
+
+    \  ]\r
+
+    }"
+auth:
+  credentials:
+    - key: token
+      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiZzEyMyIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoiN2ExNzYxMzktNzE2OC00ZmU3LTg0M2QtMTUyZGM0YjcyMjMwIiwianRpIjoiZmJmZTI1NTktZDlmOC00NDg1LWJhNDYtNGJkYTE2MmFiOGJmIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQ3VzdG9tZXIiLCJzaWQiOiIwMTM0ZWE2OC04ZDBmLTRiOWEtYjFkYS1iNGFiZDA0YjA1NmUiLCJleHAiOjE3NzMyNDA4NTQsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTEzNi8iLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjQyMDAvIn0.eeadACUv-FXsueHMWfPKf15fW9VCsqm5CpiZFV-kfwQ
+  type: bearer
+examples: ./.resources\place order.resources\examples
+order: 4494505227866797

@@ -1,7 +1,7 @@
 ﻿using Med_Map.Models.pharmacy;
 using NetTopologySuite;
 
-namespace Med_Map.Repositories
+namespace Med_Map.Repositories.PharmacyRepos
 {
     public class PharmacyRepository: IPharmacyRepository
     {
@@ -15,7 +15,7 @@ namespace Med_Map.Repositories
         public async Task InsertAsync(Pharmacy pharmacy)
         {
             _context.Pharmacy.Add(pharmacy);
-            await _context.SaveChangesAsync();
+            await SaveChangesAsync();
         }
 
         public async Task<Pharmacy?> GetByIdAsync(string id)
@@ -49,12 +49,6 @@ namespace Med_Map.Repositories
                 .OrderBy(p => p.Location.Distance(myLocation))
                 .ToListAsync();
             return pharmacies;
-        }
-
-        public async Task UpdateAsync(Pharmacy pharmacy)
-        {
-            _context.Pharmacy.Update(pharmacy);
-            await _context.SaveChangesAsync();
         }
 
         public async Task SaveChangesAsync()

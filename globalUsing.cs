@@ -7,14 +7,20 @@ global using Med_Map.Models.AI;
 global using Med_Map.Models.customer;
 global using Med_Map.Models.ordersANDmedicine;
 global using Med_Map.Models.pharmacy;
-global using Med_Map.Repositories.Account;
 global using Med_Map.Repositories;
+global using Med_Map.Repositories.Account;
+global using Med_Map.Repositories.CustomerRepos;
+global using Med_Map.Repositories.PharmacyRepos;
+global using Med_Map.Repositories.OrderRepos;
+global using Med_Map.Repositories.MedicineRepos;
 global using Med_Map.Services;
 global using Med_Map.ResponceCodes;
 global using Med_Map.DTO;
+global using Med_Map.DTO.OrderDTOs;
 global using Med_Map.DTO.AccountDTOs;
 global using Med_Map.DTO.ResponseDTOs;
 global using Med_Map.DTO.PharmacyDTOs;
+
 
 
 

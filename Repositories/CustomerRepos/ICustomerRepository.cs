@@ -1,4 +1,4 @@
-﻿namespace Med_Map.Repositories.Account
+﻿namespace Med_Map.Repositories.CustomerRepos
 {
     public interface ICustomerRepository
     {

@@ -26,6 +26,8 @@ namespace Med_Map.Models.ordersANDmedicine
         [Required]
         public ServiceStatus Status { get; set; }
         [Required]
+        public decimal ServicePrice { get; set; }
+        [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
         public string AssignedPersonnel { get; set; }

@@ -9,5 +9,9 @@
 
         // Data Retrieval
         public const string DataRetrieved = "data_retrieved_successfully";
+
+        // Data Creation & Updates
+        public const string DataCreated = "data_created_successfully";
+        public const string DataUpdated = "data_updated_successfully";
     }
 }

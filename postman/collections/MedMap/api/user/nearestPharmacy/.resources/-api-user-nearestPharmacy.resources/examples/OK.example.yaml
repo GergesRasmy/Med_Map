@@ -1,11 +1,11 @@
 $kind: http-example
 request:
-  url: http://{{baseUrl}}/api/user/nearestPharmacy?latitude=-48.054611e+9518648&longitude=0&radiusInKm=-0.33681558653
+  url: http://{{baseUrl}}/api/user/nearestPharmacy?latitude=62560.3e-7523&longitude=0.43&radiusInMeters=-258335.31
   method: GET
   queryParams:
-    latitude: "-48.054611e+9518648"
-    longitude: "0"
-    radiusInKm: "-0.33681558653"
+    latitude: "62560.3e-7523"
+    longitude: "0.43"
+    radiusInMeters: "-258335.31"
   body:
     type: text
     content: ""

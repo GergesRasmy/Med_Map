@@ -26,7 +26,7 @@ request:
         value: string
         description: ""
       - key: doctorPhoneNumber
-        value: "01511607816"
+        value: "+201087709038"
         description: ""
       - key: address
         value: string
@@ -35,13 +35,13 @@ request:
         value: "0"
         description: ""
       - key: longitude
-        value: "-995.362686e956"
+        value: "-0.50"
         description: ""
       - key: openingTime
-        value: -378584029.67:43:29.4575195
+        value: -6877797039.52:45:27.195
         description: ""
       - key: closingTime
-        value: 2909.73:75:81.184
+        value: 06382890.25:51:93
         description: ""
       - key: nationalIds
         value: string

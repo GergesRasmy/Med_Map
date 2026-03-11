@@ -10,10 +10,7 @@ namespace Med_Map.Models.ordersANDmedicine
         [Required]
         [Range(1,10,ErrorMessage ="Amount can't be over 10")]
         public int Quantity { get; set; }
-        [Required]
-        [Column(TypeName = "decimal(18,2)")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
-        public decimal UnitPrice { get; set; }
+     
 
         #region foreign keys
         [Required]

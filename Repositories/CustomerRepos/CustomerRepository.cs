@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace Med_Map.Repositories.Account
+namespace Med_Map.Repositories.CustomerRepos
 {
     public class CustomerRepository : ICustomerRepository
     {
@@ -13,7 +13,7 @@ namespace Med_Map.Repositories.Account
         public async Task InsertAsync (Customer customer)
         { 
             await _context.Customer.AddAsync(customer);
-            await _context.SaveChangesAsync();
+            await SaveChangesAsync();
         }
         
         public async Task<Customer?> GetByIdAsync(string id)
