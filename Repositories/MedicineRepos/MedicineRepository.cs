@@ -10,8 +10,11 @@
         }
         public async Task InsertAsync(MedicineMaster medicine)
         {
-            _context.MedicineMaster.Add(medicine);
-            await SaveChangesAsync();
+            if (medicine != null)
+            {
+                _context.MedicineMaster.Add(medicine);
+                await SaveChangesAsync();
+            }
         }
         public async Task<bool> ExistsAsync(string tradeName)
         {
@@ -25,6 +28,32 @@
         public async Task<MedicineMaster?> GetByIdAsync(string id)
         {
             return await _context.MedicineMaster.FirstAsync(c => c.Id == Guid.Parse(id));
+        }
+        public async Task<List<MedicineMaster>?> GetByTradeNameAsync(string tradeName)
+        {
+            if (string.IsNullOrWhiteSpace(tradeName))
+                return new List<MedicineMaster>();
+
+            return await _context.MedicineMaster
+                .Where(m => m.TradeName.Contains(tradeName))
+                .ToListAsync();
+        }
+        public async Task UpdateAsync(MedicineMaster medicine)
+        {
+            if (medicine != null)
+            {
+                _context.MedicineMaster.Update(medicine);
+                await SaveChangesAsync();
+            }
+        }
+        public async Task DeleteAsync(string id)
+        {
+            var medicine = await GetByIdAsync(id);
+            if (medicine != null)
+            {
+                _context.MedicineMaster.Remove(medicine);
+                await SaveChangesAsync();
+            }
         }
         public async Task SaveChangesAsync()
         {

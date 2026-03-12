@@ -365,3 +365,10 @@ FodyWeavers.xsd
 appsettings.json
 appsettings.Development.json
 appsettings.*.json
+
+# Postman settings and collections
+
+Postman/
+.postman/
+*.postman_collection.json
+*.postman_environment.json
