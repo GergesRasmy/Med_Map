@@ -6,8 +6,15 @@
         public const double OtpExpirationTime = 5; // in Minutes
 
         // file upload settings
-        public static readonly HashSet<string> AllowedExtensions =
-                new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+        public static readonly Dictionary<string, string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            { ".jpg", "image/jpeg" },{ ".jpeg", "image/jpeg" },
+            { ".png", "image/png" },{ ".webp", "image/webp" },
+            { ".heic", "image/heif" },{ ".heif", "image/heif" },
+            { ".tiff", "image/tiff" },{ ".tif", "image/tiff" },
+            { ".svg", "image/svg+xml" },{ ".ico", "image/x-icon" },
+            { ".gif", "image/gif" },{ ".bmp", "image/bmp" }
+        };
         public const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
     }
 }

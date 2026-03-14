@@ -30,13 +30,14 @@ namespace Med_Map.Repositories.PharmacyRepos
         {
             string normalizedSearch = name.ToUpper();
 
-            return await _context.Pharmacy
-             .Include(p => p.PhoneNumbers)
-             .Include(p => p.User) 
-             .Where(p =>
-                 p.doctorName.ToUpper().Contains(normalizedSearch) ||
-                 p.User.NormalizedUserName.Contains(normalizedSearch)) 
-             .ToListAsync();
+            var pharmacies = await  _context.Pharmacy
+                                    .Include(p => p.PhoneNumbers)
+                                    .Include(p => p.User)
+                                    .Where(p =>
+                                        p.doctorName != null && p.doctorName.ToUpper().Contains(normalizedSearch) ||
+                                        (p.User != null && p.User.NormalizedUserName != null && p.User.NormalizedUserName.Contains(normalizedSearch)))
+                                    .ToListAsync();
+            return pharmacies;
         }
         public async Task<List<Pharmacy>> GetNearestPharmacyAsync(double latitude, double longitude, double radiusInMeters)
         {

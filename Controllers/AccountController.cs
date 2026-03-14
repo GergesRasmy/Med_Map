@@ -174,7 +174,13 @@ namespace Med_Map.Controllers
 
             authClaims.AddRange(extraClaims);
 
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT:SecurityKey"]));
+            var securityKey = config["JWT:SecurityKey"];
+            if (string.IsNullOrEmpty(securityKey))
+            {
+                throw new InvalidOperationException("JWT SecurityKey is missing in appsettings.json. Please check your configuration.");
+            }
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityKey));
+
 
             var token = new JwtSecurityToken(
                 issuer: config["JWT:IssuerIP"],
