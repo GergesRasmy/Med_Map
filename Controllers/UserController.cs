@@ -23,41 +23,46 @@ namespace Med_Map.Controllers
         }
         #endregion
 
-        [HttpGet("privateGet")]//api/user/privateGet
+        [HttpGet("privateGet")]         //api/user/privateGet
         public async Task<IActionResult> getPrivateDetails()
         {
+            // Extract user ID and role from claims
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null) return ErrorResponse("Invalid token or user not found", ErrorCodes.InvalidCredentials);
 
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("Invalid token or user not found", ErrorCodes.UserNotFound);
 
-
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
+            // Fetch and return customer details
             if (role == "Customer")
             {
+                // Fetch customer details 
                 var customer = await customerRepository.GetByIdAsync(userId);
                 if (customer == null)
                     return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
-
+                // Map customer details to DTO
                 var data = new CustomerDetailsDTO
                 {
+                    id = customer.ApplicationUserId,
                     role = role,
-                    id = Guid.Parse(customer.ApplicationUserId),
+                    userName = user.UserName ?? "",
+                    email = user.Email ?? "",
+                    phoneNumber = user.PhoneNumber ?? "",
+                    address = customer.address,
                     birthDate = customer.BirthDate,
-                    medicalHistory = customer.MedicalHistory,
-                    userName = user.UserName,
-                    email = user.Email,
-                    phoneNumber = user.PhoneNumber
+                    medicalHistory = customer.MedicalHistory
                 };
                 return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
             }
+            // Fetch and return pharmacy details
             else if (role == "Pharmacy")
             {
                 var phar = await pharmacyRepository.GetByIdAsync(userId);
                 if (phar == null)
-                    return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
+                    return ErrorResponse("Pharmacy profile not found", ErrorCodes.UserNotFound);
+                // Extract document URLs
                 List<string> LicenseImageUrls = new List<string>();
                 List<string> NationalIdUrls = new List<string>();
                 foreach (var doc in phar.Documents)
@@ -68,11 +73,12 @@ namespace Med_Map.Controllers
                     }
                     NationalIdUrls.Add(doc.FileUrl);
                 }
+                // Map pharmacy details to DTO
                 var data = new PharmacyDetailsDTO
                 {
                     role = role,
                     id = Guid.Parse(phar.ApplicationUserId),
-                    email = user.Email,
+                    email = user.Email ?? "",
                     pharmacyName = phar.PharmacyName,
                     pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
                     doctorName = phar.doctorName,
@@ -89,10 +95,8 @@ namespace Med_Map.Controllers
                 };
                 return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
             }
-            else
-            {
-                return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
-            }
+            // Handle invalid role
+            else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
 
     }

@@ -14,26 +14,25 @@ namespace Med_Map.Controllers
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly IFileService fileService;
         private readonly IOtpService otpService;
+        private readonly IMedicineRepository medicineRepository;
 
-        public PharmacyController(UserManager<ApplicationUser> userManager, IPharmacyRepository pharmacyRepository, IFileService fileService,IOtpService otpService)
+        public PharmacyController(UserManager<ApplicationUser> userManager, IPharmacyRepository pharmacyRepository, IFileService fileService,IOtpService otpService,IMedicineRepository medicineRepository)
         {
             this.userManager = userManager;
             this.pharmacyRepository = pharmacyRepository;
             this.fileService = fileService;
             this.otpService = otpService;
+            this.medicineRepository = medicineRepository;
         }
         #endregion
         [HttpPost("registerPharmacy")]              //api/pharmacy/registerPharmacy
         public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }     // Check if the model state is valid
+            HandleValidationErrors();
 
             // Check if the user already exists
-            if (await userManager.FindByEmailAsync(model.email) != null) return ErrorResponse("Email already in use.", ErrorCodes.EmailAlreadyInUse);
+            if (await userManager.FindByEmailAsync(model.email) != null) 
+                return ErrorResponse("Email already in use.", ErrorCodes.EmailAlreadyInUse);
 
             // Create the Identity User
             ApplicationUser appUser = new ApplicationUser
@@ -159,8 +158,7 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
-
-
+    
 
         //helper method to convert pharmacy to DTO
         private PublicPharmacyDetailsDTO MapToPublicDto(Pharmacy phar)

@@ -5,7 +5,7 @@
         Task InsertAsync(Orders order);
         Task<List<Orders>?> GetAllOrdersAsync(string id, string role);
         Task<Orders?> GetOrderByIdAsync(string orderId);
-        Task<bool> CancelOrder(string orderId);
+        Task<bool> CancelOrder(string orderId, string userId);
         Task SaveChangesAsync();
 
 

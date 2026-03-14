@@ -22,5 +22,16 @@ namespace Med_Map.Controllers
         [NonAction]
         protected IActionResult ErrorResponse(string message, string code = "Failed", object errors = null)
             => BadRequest(new ErrorResponseDTO<object> { success = false, message = message, code = code, error = errors });
+
+        [NonAction]
+        protected IActionResult HandleValidationErrors()
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
+        }
     }
 }

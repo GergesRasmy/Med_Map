@@ -15,8 +15,8 @@
         public const string Emailconfirmed = "email_already_verified";
         public const string UserNotFound = "user_not_found";
         public const string ActivitionFailed = "activition_failed";
-        public const string WrongFormat = "Wrong_Format";
-        public const string RegistrationFailed = "Registration_failed";
+        public const string WrongFormat = "wrong_Format";
+        public const string RegistrationFailed = "registration_failed";
 
 
         // OTP Logic
@@ -30,5 +30,10 @@
         public const string InvalidInput = "invalid_input";
         public const string DataNotFound = "data_not_found";
         public const string InvalidAction = "invalid_action";
+
+        //data entry
+        public const string DuplicateEntry = "duplicate_entry";
+        public const string DataBaseError = "database_error";
+        public const string InsufficientStock = "insufficient_stock";
     }
 }

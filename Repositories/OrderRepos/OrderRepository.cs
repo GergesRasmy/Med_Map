@@ -35,18 +35,48 @@
                                         .ThenInclude(oi => oi.Medicine)
                                         .FirstOrDefaultAsync(o => o.Id == guid);
         }
-        public async Task<bool> CancelOrder(string orderId)
+        // Inside your OrderRepository.cs
+        public async Task<bool> CancelOrder(string orderId, string userId)
         {
-            var order = await GetOrderByIdAsync(orderId);
-            if (order != null && (order.Status == StatusList.Pending || order.Status == StatusList.Preparing))
+            // You likely have access to the DbContext here, which is exactly where it belongs!
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
             {
+                var order = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .FirstOrDefaultAsync(o => o.Id == Guid.Parse(orderId) && o.CustomerId == userId);
+
+                // Validate that order exists and is in a cancellable state
+                if (order == null || order.Status != StatusList.Pending)
+                    return false;
+
+                // Restore stock
+                foreach (var item in order.OrderItems)
+                {
+                    var inventory = await _context.PharmacyInventory
+                        .FirstOrDefaultAsync(pi => pi.PharmacyId == order.PharmacyId
+                                                && pi.MedicineId == item.MedicineId);
+
+                    if (inventory != null)
+                    {
+                        inventory.StockQuantity += item.Quantity;
+                    }
+                }
+
                 order.Status = StatusList.Cancelled;
+
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
                 return true;
             }
-            return false;
+            catch
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
         }
-    
+
 
         public async Task SaveChangesAsync()
         {

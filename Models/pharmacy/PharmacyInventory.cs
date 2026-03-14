@@ -18,7 +18,7 @@ namespace Med_Map.Models.pharmacy
         [Required]
         public DateOnly ExpiryDate { get; set; }
         [NotMapped]
-        public bool IsAvailable => StockQuantity > 0 && ExpiryDate > DateOnly.FromDateTime(DateTime.Now);
+        public bool IsAvailable => StockQuantity > 0 && ExpiryDate > DateOnly.FromDateTime(DateTime.UtcNow);
         #region foreign keys
         public string PharmacyId { get; set; }
         [ForeignKey("PharmacyId")]

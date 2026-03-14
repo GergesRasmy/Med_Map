@@ -18,7 +18,7 @@ namespace Med_Map.Repositories.CustomerRepos
         
         public async Task<Customer?> GetByIdAsync(string id)
         {
-            return await _context.Customer.FirstAsync(c => c.ApplicationUserId == id);
+            return await _context.Customer.Include(c => c.User).FirstAsync(c => c.ApplicationUserId == id);
         }
         
         public async Task SaveChangesAsync()

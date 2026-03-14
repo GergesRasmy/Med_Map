@@ -27,6 +27,7 @@ public partial class Program
         builder.Services.AddScoped<IOrderRepository, OrderRepository>();
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
+        builder.Services.AddScoped<IPharmacyInventoryRepository, PharmacyInventoryRepository>();
         builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
         #endregion
         #region service registration

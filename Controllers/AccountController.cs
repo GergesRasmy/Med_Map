@@ -1,6 +1,4 @@
-﻿using Med_Map.DTO.CustomerDTOs;
-using Med_Map.DTO.PharmacyDTOs;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -41,11 +39,7 @@ namespace Med_Map.Controllers
         [HttpPost("verifyOtp")]           //api/Account/verifyotp
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }    // Check if the model state is valid
+            HandleValidationErrors();
 
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
             var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
@@ -76,11 +70,8 @@ namespace Med_Map.Controllers
         [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
         public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
-            if (!ModelState.IsValid)    // Check if the model state is valid
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }
+            HandleValidationErrors();
+
             //Find the user by email
             var user = await userManager.FindByEmailAsync(model.email);
             if (user == null) 
@@ -105,11 +96,7 @@ namespace Med_Map.Controllers
         [HttpPost("login")]           //api/Account/login
         public async Task<IActionResult> login([FromBody]LoginDTO userDto)
         {
-            if (!ModelState.IsValid)    // Check if the model state is valid
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }
+            HandleValidationErrors();
 
             //Find the user by email and verify the password
             var user = await userManager.FindByEmailAsync(userDto.email);

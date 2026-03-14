@@ -2,8 +2,8 @@
 {
     public class PublicCustomerDetailsDTO
     {
-        public Guid id { get; set; }
-        public string role { get; set; }
-        public string userName { get; set; }
+        public string id { get; set; } = string.Empty;  
+        public string role { get; set; } = string.Empty;
+        public string userName { get; set; } = string.Empty;
     }
 }

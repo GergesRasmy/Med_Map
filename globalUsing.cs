@@ -16,11 +16,13 @@ global using Med_Map.Repositories.MedicineRepos;
 global using Med_Map.Services;
 global using Med_Map.Constants;
 global using Med_Map.DTO;
-global using Med_Map.DTO.OrderDTOs;
+global using Med_Map.DTO.OrdersDTOs;
 global using Med_Map.DTO.AccountDTOs;
 global using Med_Map.DTO.ResponseDTOs;
 global using Med_Map.DTO.PharmacyDTOs;
 global using Med_Map.DTO.MedicineDTOs;
+global using Med_Map.DTO.CustomerDTOs;
+global using Med_Map.DTO.PharmacyInventoryDTOs;
 
 
 

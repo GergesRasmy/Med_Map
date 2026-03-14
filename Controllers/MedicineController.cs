@@ -22,15 +22,13 @@ namespace Med_Map.Controllers
             this.fileService = fileService;
         }
         #endregion
-        [HttpPost("add")]//api/medicine/add
-        [Authorize(Roles = "Pharmacy")] //restrict access to only users with the "Pharmacy" role (you need pharmacy token)
+
+        [HttpPost("add")]               //api/medicine/add
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }
+            HandleValidationErrors();
+
             if (await medicineRepository.ExistsAsync(medicine.tradeName))
             {
                 return ErrorResponse("A medicine with this trade name already exists.", ErrorCodes.ValidationError);
@@ -57,51 +55,47 @@ namespace Med_Map.Controllers
             var response = MapToDto(newMedicine);
             return SuccessResponse(response, "Medicine added successfully", SuccessCodes.DataCreated);
         }
-        [HttpGet("allMedicine")]//api/medicine/order/allMedicine
+        [HttpGet("allMedicine")]        //api/medicine/order/allMedicine
         public async Task<IActionResult> getAllMedicine()
         {
+            //get the medicine from the database
             var medicine = await medicineRepository.GetAllMedicineAsync();
 
             if (medicine == null || !medicine.Any())
-            {
                 return SuccessResponse(new List<MedicineResponseDTO>(), "No medicines found", SuccessCodes.DataRetrieved);
-            }
+
+            //Map to DTO and Return Response
             var response = medicine.Select(MapToDto).ToList();
             return SuccessResponse(response, "Medicines retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpGet("getById")] // api/medicine/getById?id=
+        [HttpGet("getById")]            // api/medicine/getById?id=
         public async Task<IActionResult> GetMedicineById([FromQuery]string id)
         {
-            //get the order from the database
+            //get the medicine from the database
             var medicine = await medicineRepository.GetByIdAsync(id);
             if (medicine == null)
-            {
                 return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
-            }
+            
             //Map to DTO
             var response = MapToDto(medicine);
             return SuccessResponse<MedicineResponseDTO>(response, "Medicine retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpPost("update")]//api/medicine/update
+        [HttpPost("update")]            //api/medicine/update
         public async Task<IActionResult> UpdateMedicine([FromForm] UpdateMedicineDTO NewMedicine)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }
+            HandleValidationErrors();
 
+            //Check if the new trade name is already taken by another medicine (excluding the current medicine)
             var isNameTaken = await medicineRepository.ExistsAsync(NewMedicine.tradeName);
             if (isNameTaken)
-            {
                 return ErrorResponse("This trade name is already assigned to another medicine.", ErrorCodes.ValidationError);
-            }
 
+            //Get the existing medicine from the database
             var ExistingMedicine = await medicineRepository.GetByIdAsync(NewMedicine.id);
             if (ExistingMedicine == null)
-            {
                 return ErrorResponse("Medicine not found", ErrorCodes.DataNotFound);
-            }
+
+            //Update the existing medicine with the new values
             ExistingMedicine.TradeName = NewMedicine.tradeName;
             ExistingMedicine.GenericName = NewMedicine.genericName;
             ExistingMedicine.Price = NewMedicine.price;
@@ -119,29 +113,33 @@ namespace Med_Map.Controllers
                     return ErrorResponse("Image didn't save", ErrorCodes.ValidationError, ex.Message);
                 }
             }
+            //Save the updated medicine to the database and Return Response
             await medicineRepository.UpdateAsync(ExistingMedicine);
             var response = MapToDto(ExistingMedicine);
             return SuccessResponse(response, "Medicine updated successfully", SuccessCodes.DataUpdated);
         }
-        [HttpGet("delete")] // api/medicine/delete?id=
+        [HttpGet("delete")]             // api/medicine/delete?id=
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteMedicine([FromQuery]string id)
         {
+            //Get the existing medicine from the database
             var medicine = await medicineRepository.GetByIdAsync(id);
             if (medicine == null)
-            {
                 return ErrorResponse("Medicine not found", ErrorCodes.DataNotFound);
-            }
+
+            //Delete the medicine from the database and Return Response
             await medicineRepository.DeleteAsync(id);
             return SuccessResponse(message: "Medicine deleted successfully", code: SuccessCodes.DataDeleted);
         }
-        [HttpGet("search")] // api/medicine/search?query=
+        [HttpGet("search")]             // api/medicine/search?query=
         public async Task<IActionResult> SearchMedicine([FromQuery]string query)
         {
+            //Search for medicines by trade name in the database
             var medicines = await medicineRepository.GetByTradeNameAsync(query);
             if (medicines == null || !medicines.Any())
-            {
                 return SuccessResponse(new List<MedicineResponseDTO>(), "No medicines found matching the search criteria", SuccessCodes.DataRetrieved);
-            }
+           
+            //Map to DTO and Return Response
             var response = medicines.Select(MapToDto).ToList();
             return SuccessResponse(response, "Medicines retrieved successfully", SuccessCodes.DataRetrieved);
         }

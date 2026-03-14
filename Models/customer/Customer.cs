@@ -11,6 +11,8 @@ namespace Med_Map.Models.customer
         public DateOnly BirthDate { get; set; }
         public string? MedicalHistory { get; set; }
 
+        public string? address { get; set; }
+
         // --- Identity Link ---
         [Key, ForeignKey("User")]
         public string ApplicationUserId { get; set; } 

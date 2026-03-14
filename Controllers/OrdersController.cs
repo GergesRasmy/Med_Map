@@ -1,8 +1,9 @@
-﻿using Med_Map.DTO.OrdersDTOs;
+﻿
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using NetTopologySuite;
+using NetTopologySuite.Index.HPRtree;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -18,27 +19,28 @@ namespace Med_Map.Controllers
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IOrderRepository orderRepository;
         private readonly IMedicineRepository medicineRepository;
+        private readonly IPharmacyRepository pharmacyRepository;
+        private readonly IPharmacyInventoryRepository pharmacyInventoryRepository;
 
-        public OrdersController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOrderRepository orderRepository, IMedicineRepository medicineRepository)
+        public OrdersController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOrderRepository orderRepository, IMedicineRepository medicineRepository
+                                ,IPharmacyRepository pharmacyRepository,IPharmacyInventoryRepository pharmacyInventoryRepository)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
             this.orderRepository = orderRepository;
             this.medicineRepository = medicineRepository;
+            this.pharmacyRepository = pharmacyRepository;
+            this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
         [HttpPost("place")]                     //api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
-            if(!ModelState.IsValid) { 
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }
-            //Parse the Enum (Validate Payment Option)
+            HandleValidationErrors();
+
+            // Validate Payment Option
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
-            {
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);
-            }
 
             //Map DTO to Order Model
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
@@ -70,50 +72,40 @@ namespace Med_Map.Controllers
             }
             newOrder.TotalAmount = total;
 
+            //Reduce the amount ordered from pharmacy inventory
+            foreach (var item in orderDTO.items)
+            {
+                var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
+                if (inventory == null)
+                    return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
+                if (inventory.StockQuantity < item.quantity)
+                    return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
+                inventory.StockQuantity -= item.quantity;     
+            }
+
             //Save to Database and Return Response
             await orderRepository.InsertAsync(newOrder);
-            var response = new OrderResponseDTO
-            {
-                Id = newOrder.Id,
-                CreatedAt = newOrder.CreatedAt,
-                Status = newOrder.Status.ToString(),
-                TotalAmount = newOrder.TotalAmount,
-                Items = newOrder.OrderItems.Select(oi => new OrderItemResponseDTO
-                {
-                    MedicineName = oi.Medicine.TradeName,
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.Medicine.Price
-                }).ToList()
-            };
+            var response = MapOrderToResponseDTO(newOrder);
+
             return SuccessResponse(response, "Order created successfully", SuccessCodes.DataCreated);
         }
         [HttpGet("myOrders")]                   //api/order/myOrders
         public async Task<IActionResult> getMyOrders()
         {
+            // Extract user ID and role from claims
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            var orders = await orderRepository.GetAllOrdersAsync(userId,role.ToString());
             if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
 
+            // Get orders based on user role and user ID
+            var orders = await orderRepository.GetAllOrdersAsync(userId,role.ToString());
+
             if (orders == null || !orders.Any())
-            {
                 return SuccessResponse(new List<OrderResponseDTO>(), "No orders found", SuccessCodes.DataRetrieved);
-            }
-            var response = orders.Select(o => new OrderResponseDTO
-            {
-                Id = o.Id,
-                CreatedAt = o.CreatedAt,
-                Status = o.Status.ToString(),
-                TotalAmount = o.TotalAmount,
-                Items = o.OrderItems.Select(oi => new OrderItemResponseDTO
-                {
-                    MedicineName = oi.Medicine.TradeName,
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.Medicine.Price
-                }).ToList()
-            }).ToList();
+
+            //Map to DTO and return response
+            var response = orders.Select(MapOrderToResponseDTO).ToList();
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [HttpGet]                               // api/order?id=
@@ -122,12 +114,29 @@ namespace Med_Map.Controllers
             //get the order from the database
             var order = await orderRepository.GetOrderByIdAsync(id);
             if (order == null)
-            {
                 return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
-            }
 
-            //Map to DTO
-            var response = new OrderResponseDTO
+            //Map to DTO and return response
+            var response = MapOrderToResponseDTO(order);
+            return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
+        }
+        [HttpPost("cancel/{orderId}")]          // api/order/cancel/{orderId}
+        public async Task<IActionResult> CancelOrder(string orderId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return ErrorResponse("Unauthorized access", ErrorCodes.Unauthorized);
+
+            var success = await orderRepository.CancelOrder(orderId, userId);
+
+            if (!success)
+                return ErrorResponse("Order cannot be cancelled at this stage.", ErrorCodes.InvalidAction);
+
+            return SuccessResponse("Order cancelled successfully", SuccessCodes.DataUpdated);
+        }
+        // Helper method to map Order to OrderResponseDTO
+        private OrderResponseDTO MapOrderToResponseDTO(Orders order)
+        {
+            return new OrderResponseDTO
             {
                 Id = order.Id,
                 CreatedAt = order.CreatedAt,
@@ -135,23 +144,11 @@ namespace Med_Map.Controllers
                 TotalAmount = order.TotalAmount,
                 Items = order.OrderItems.Select(oi => new OrderItemResponseDTO
                 {
-                    MedicineName = oi.Medicine.TradeName,
+                    MedicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
                     Quantity = oi.Quantity,
-                    UnitPrice = oi.Medicine.Price
+                    UnitPrice = oi.Medicine?.Price ?? 0
                 }).ToList()
             };
-
-            return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-        [HttpPost("cancel/{orderId}")]          // api/order/cancel/{orderId}
-        public async Task<IActionResult> CancelOrder(string orderId)
-        {
-            var success = await orderRepository.CancelOrder(orderId);
-
-            if (!success)
-                return ErrorResponse("Order cannot be cancelled at this stage.", ErrorCodes.InvalidAction);
-
-            return SuccessResponse("Order cancelled successfully", SuccessCodes.DataUpdated);
         }
     }
 }

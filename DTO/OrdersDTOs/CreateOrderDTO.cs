@@ -1,6 +1,4 @@
-﻿using Med_Map.DTO.OrdersDTOs;
-
-namespace Med_Map.DTO.OrderDTOs
+﻿namespace Med_Map.DTO.OrdersDTOs
 {
     public class CreateOrderDTO
     {
