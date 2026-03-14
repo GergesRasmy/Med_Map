@@ -49,8 +49,8 @@ namespace Med_Map.Controllers
 
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
             var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
-
-            if (otpRecord == null) return ErrorResponse("Invalid or expired OTP code.", ErrorCodes.InvalidOtp);
+            if (otpRecord == null) 
+                return ErrorResponse("Invalid or expired OTP code.", ErrorCodes.InvalidOtp);
 
             //Mark the OTP as used immediately to prevent replay attacks
             otpRecord.IsUsed = true;
@@ -65,50 +65,32 @@ namespace Med_Map.Controllers
             user.EmailConfirmed = true;
             var updateResult = await userManager.UpdateAsync(user);
             
-
             if (!updateResult.Succeeded)
                 return ErrorResponse("Failed to activate user account.", ErrorCodes.ActivitionFailed);
 
-            //Create a Session record in the database
-            Guid sessionId = Guid.NewGuid();
-            string jwtId = Guid.NewGuid().ToString();
-            DateTime expirationTime = DateTime.UtcNow.AddHours(Constant.tokenExpirationTime);
-
-            var session = new UserSession
-            {
-                Id = sessionId,
-                UserId = user.Id,
-                JwtId = jwtId,
-                IsActive = true,
-                ExpiresAt = expirationTime
-            };
-            await sessionRepository.InsertAsync(session);
-
-            //Generate the JWT using the helper
-            var roles = await userManager.GetRolesAsync(user);
-            var claims = roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList();
-            claims.Add(new Claim("sid", sessionId.ToString()));
-
-            var AuthData = new AuthResponseDataDTO
-            {
-                token = GenerateToken(user, claims, jwtId, expirationTime),
-                expiration = expirationTime,
-                role = roles.FirstOrDefault()
-            };
+            //Create session and generate token
+            var AuthData = await CreateUserSessionAndTokenAsync(user);
             return SuccessResponse(AuthData,"Account verified successfully.",SuccessCodes.AccountVerified);
         }
 
         [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
         public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid)    // Check if the model state is valid
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
             }
+            //Find the user by email
             var user = await userManager.FindByEmailAsync(model.email);
-            if (user == null) return ErrorResponse("User Not Found",ErrorCodes.UserNotFound);
+            if (user == null) 
+                return ErrorResponse("User Not Found",ErrorCodes.UserNotFound);
 
+            //Check if the user is already verified
+            if(user.EmailConfirmed) 
+                return ErrorResponse("Email already verified, Please login to your account.", ErrorCodes.Emailconfirmed);
+
+            //Generate and send new OTP
             try
             {
                 var otpData = await otpService.GenerateAndSendOtpAsync(user);
@@ -123,42 +105,22 @@ namespace Med_Map.Controllers
         [HttpPost("login")]           //api/Account/login
         public async Task<IActionResult> login([FromBody]LoginDTO userDto)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid)    // Check if the model state is valid
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }      // Check if the model state is valid
+            }
 
-            var dbUser = await userManager.FindByEmailAsync(userDto.email);
-            if (dbUser == null || !await userManager.CheckPasswordAsync(dbUser, userDto.password))
+            //Find the user by email and verify the password
+            var user = await userManager.FindByEmailAsync(userDto.email);
+            if (user == null || !await userManager.CheckPasswordAsync(user, userDto.password))
                 return ErrorResponse("Invaild Email or Password",ErrorCodes.InvalidCredentials); 
 
-            if (!dbUser.EmailConfirmed)         //User must be verified
+            if (!user.EmailConfirmed)         //User must be verified
                 return ErrorResponse("Email not verified, Please verify your Account.", ErrorCodes.EmailUnconfirmed);
 
-            Guid sessionId = Guid.NewGuid();
-            string jwtId = Guid.NewGuid().ToString(); 
-            DateTime expirationTime = DateTime.UtcNow.AddHours(Constant.tokenExpirationTime);
-
-            await sessionRepository.InsertAsync(new UserSession
-            {
-                Id = sessionId,
-                UserId = dbUser.Id,
-                JwtId = jwtId,
-                IsActive = true,
-                ExpiresAt = expirationTime
-            });
-
-            // Generate token using the helper
-            var roles = await userManager.GetRolesAsync(dbUser);
-            var claims = roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList();
-            claims.Add(new Claim("sid", sessionId.ToString()));
-            var AuthData = new AuthResponseDataDTO
-            {
-                token = GenerateToken(dbUser, claims, jwtId, expirationTime),
-                expiration = expirationTime,
-                role = roles.FirstOrDefault()
-            };
+            //Create session and generate token
+            var AuthData = await CreateUserSessionAndTokenAsync(user);
             return SuccessResponse(AuthData,"Login Successful",SuccessCodes.LoginSuccess);
         }
 
@@ -190,6 +152,38 @@ namespace Med_Map.Controllers
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        // Helper method to create a session And return auth response data
+        private async Task<AuthResponseDataDTO> CreateUserSessionAndTokenAsync(ApplicationUser user)
+        {
+            //Create and store session in database
+            var sessionId = Guid.NewGuid();
+            var jwtId = Guid.NewGuid().ToString();
+            var expirationTime = DateTime.UtcNow.AddHours(Constant.tokenExpirationTime);
+
+            var session = new UserSession
+            {
+                Id = sessionId,
+                UserId = user.Id,
+                JwtId = jwtId,
+                IsActive = true,
+                ExpiresAt = expirationTime
+            };
+            await sessionRepository.InsertAsync(session);
+
+            //Build Claims
+            var roles = await userManager.GetRolesAsync(user);
+            var claims = roles.Select(r => new Claim(ClaimTypes.Role, r)).ToList();
+            claims.Add(new Claim("sid", sessionId.ToString()));
+
+            //Return the Auth Data DTO
+            return new AuthResponseDataDTO
+            {
+                token = GenerateToken(user, claims, jwtId, expirationTime),
+                expiration = expirationTime,
+                role = roles.FirstOrDefault() ?? string.Empty
+            };
         }
     }
 }

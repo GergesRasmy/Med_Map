@@ -379,3 +379,5 @@ Postman/
 /postman/collections/MedMap/api/medicine/add medicine.request.yaml
 /postman/collections/MedMap/api/account/login/-api-account-login.request.yaml
 /postman/collections/MedMap/api/account/registerCustomer/-api-account-registerCustomer.request.yaml
+
+wwwroot

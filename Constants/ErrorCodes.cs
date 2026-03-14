@@ -12,6 +12,7 @@
         public const string EmailAlreadyInUse = "email_already_used";
         public const string PhoneAlreadyInUse = "phone_already_used";
         public const string EmailUnconfirmed = "email_not_verified";
+        public const string Emailconfirmed = "email_already_verified";
         public const string UserNotFound = "user_not_found";
         public const string ActivitionFailed = "activition_failed";
         public const string WrongFormat = "Wrong_Format";
