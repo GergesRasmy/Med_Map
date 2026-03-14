@@ -31,6 +31,8 @@ public partial class Program
         #endregion
         #region service registration
         builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IFileService, FileService>();
+        builder.Services.AddScoped<IOtpService, OtpService>();
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {

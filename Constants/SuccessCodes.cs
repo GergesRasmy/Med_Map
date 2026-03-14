@@ -1,4 +1,4 @@
-﻿namespace Med_Map.ResponceCodes
+﻿namespace Med_Map.Constants
 {
     public class SuccessCodes
     {

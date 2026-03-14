@@ -14,9 +14,12 @@ namespace Med_Map.Controllers
     {
         #region ctor
         private readonly IMedicineRepository medicineRepository;
-        public MedicineController( IMedicineRepository medicineRepository)
+        private readonly IFileService fileService;
+
+        public MedicineController( IMedicineRepository medicineRepository,IFileService fileService)
         {
             this.medicineRepository = medicineRepository;
+            this.fileService = fileService;
         }
         #endregion
         [HttpPost("add")]//api/medicine/add
@@ -42,8 +45,8 @@ namespace Med_Map.Controllers
             };
             try
             {
-                string imageUrl = await SaveFile(medicine.image, "Medicine_Images");
-                newMedicine.ImageUrl = imageUrl;
+                string? Path = await fileService.SaveFileAsync(medicine.image, "Medicine_Images");
+                newMedicine.ImageUrl = Path;
             }
             catch (Exception ex)
             {
@@ -108,7 +111,7 @@ namespace Med_Map.Controllers
             {
                 try
                 {
-                    string imageUrl = await SaveFile(NewMedicine.image, "Medicine_Images");
+                    string imageUrl = await fileService.SaveFileAsync(NewMedicine.image, "Medicine_Images");
                     ExistingMedicine.ImageUrl = imageUrl;
                 }
                 catch (Exception ex)
@@ -158,39 +161,6 @@ namespace Med_Map.Controllers
             };
         }
 
-        // Helper method to Save incoming Images
-        private async Task<string?> SaveFile(IFormFile file, string folderName)
-        {
-            if (file == null || file.Length == 0) return null;
-
-            //Size Validation (3 MB)
-            const long MaxFileSize = 3 * 1024 * 1024;
-            if (file.Length > MaxFileSize)
-                throw new Exception("File size exceeds the 3MB limit.");
-
-            //Extension/MIME Type Validation
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!allowedExtensions.Contains(extension))
-                throw new Exception("Invalid file type. Only JPG, PNG, and WebP are allowed.");
-
-            //Define and Ensure Directory
-            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", folderName);
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            //Secure File Naming
-            string uniqueFileName = $"{Guid.NewGuid()}{extension}";
-            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            //Save the file
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(fileStream);
-            }
-
-            return $"/uploads/{folderName}/{uniqueFileName}";
-        }
     }
 }
 

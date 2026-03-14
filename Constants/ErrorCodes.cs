@@ -1,4 +1,4 @@
-﻿namespace Med_Map.ResponceCodes
+﻿namespace Med_Map.Constants
 {
     public static class ErrorCodes
     {
@@ -15,6 +15,7 @@
         public const string UserNotFound = "user_not_found";
         public const string ActivitionFailed = "activition_failed";
         public const string WrongFormat = "Wrong_Format";
+        public const string RegistrationFailed = "Registration_failed";
 
 
         // OTP Logic

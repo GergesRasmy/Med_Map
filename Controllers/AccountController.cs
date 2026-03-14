@@ -18,166 +18,25 @@ namespace Med_Map.Controllers
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration config;
         private readonly IOtpRepository otpRepository;
+        private readonly IOtpService otpService;
         private readonly ISessionRepository sessionRepository;
-        private readonly IPharmacyRepository pharmacyRepository;
+        private readonly IFileService fileService;
         private readonly IEmailService emailService;
-        private readonly ICustomerRepository customerRepository;
 
         public AccountController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration config
-                                            , IOtpRepository otpRepository, ISessionRepository sessionRepository,IPharmacyRepository pharmacyRepository,IEmailService emailService, ICustomerRepository customerRepository)
+                                            , IOtpRepository otpRepository, IOtpService otpService, ISessionRepository sessionRepository
+                                            , IFileService fileService, IEmailService emailService)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
             this.config = config;
             this.otpRepository = otpRepository;
+            this.otpService = otpService;
             this.sessionRepository = sessionRepository;
-            this.pharmacyRepository = pharmacyRepository;
+            this.fileService = fileService;
             this.emailService = emailService;
-            this.customerRepository = customerRepository;
         }
         #endregion
-
-        [HttpPost("registerPharmacy")]           //api/Account/registerPharmacy
-        public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
-        {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }     // Check if the model state is valid
-
-            // Check if the user already exists
-            if (await userManager.FindByEmailAsync(model.email) != null) return ErrorResponse("Email already in use.",ErrorCodes.EmailAlreadyInUse);
-
-            // Create the Identity User
-            ApplicationUser appUser = new ApplicationUser
-            {
-                UserName = model.pharmacyName,
-                Email = model.email,
-                EmailConfirmed = false, 
-                IsActive = false
-            };
-
-            IdentityResult result = await userManager.CreateAsync(appUser, model.password);
-
-            if (result.Succeeded)
-            {
-                try
-                {
-                    var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
-                    await userManager.AddToRoleAsync(appUser, "Pharmacy");      // Assign Role
-                    var pharmacy = new Pharmacy                                 // Create Pharmacy Profile record
-                    {
-                        ApplicationUserId = appUser.Id,
-                        PharmacyName = model.pharmacyName,
-                        LicenseNumber = model.licenseNumber,
-                        Location = location,
-                        address=model.address,
-                        OpeningTime = model.openingTime,
-                        ClosingTime = model.closingTime,
-                        Is24Hours = model.is24Hours,
-                        HaveDelivary = model.deliveryAvailability,
-                        doctorName = model.doctorName,
-                        doctorPhoneNumber = model.doctorPhoneNumber,
-                        PhoneNumbers = new List<PharmacyPhoneNumbers>(),
-                        Documents = new List<PharmacyDocument>()
-                    };
-                    foreach (var phone in model.pharmacyPhones)
-                    {
-                        if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
-                        {
-                            pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers
-                            {
-                                Number = phone,
-                                Pharmacy = pharmacy,
-                                PharmacyId = appUser.Id
-                            });
-                        }
-                        else
-                        {
-                            return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
-                        }
-                    }
-                    try
-                    {
-                        // Process National IDs
-                        foreach (var file in model.nationalIds)
-                        {
-                            string path = await SaveFile(file, "National_Ids");
-                            pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
-                        }
-
-                        // Process License Images
-                        foreach (var file in model.licenseImages)
-                        {
-                            string path = await SaveFile(file, "Pharmacy_Licenses");
-                            pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        return ErrorResponse("File processing failed: ", ErrorCodes.ValidationError, ex.Message);
-                    }
-
-                    await pharmacyRepository.InsertAsync(pharmacy);
-                    return await SendOtpInternal(appUser);      // OTP Sending and return sessionId for verification
-                }
-                catch (Exception)
-                {
-                    // If profile creation fails, delete the Identity user so they can try again
-                    await userManager.DeleteAsync(appUser);
-                    return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed);
-                }
-            }
-            return ErrorResponse("Registration failed during profile creation.",ErrorCodes.ProfileCreationFailed, result.Errors.Select(e => e.Description));
-        }
-
-        [HttpPost("registerCustomer")]           //api/Account/registerCustomer
-        public async Task<IActionResult> registerCustomer([FromBody]CustomerRegisterDTO model)
-        {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-            }    // Check if the model state is valid
-
-            // Check for existing Phonenumber
-            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
-                return ErrorResponse("Phone number is already in use.", ErrorCodes.PhoneAlreadyInUse);
-
-            ApplicationUser appUser = new ApplicationUser
-            {
-                UserName = model.userName,
-                Email = model.email,
-                PhoneNumber = model.phoneNumber,
-                EmailConfirmed = false,
-                IsActive = true 
-            };
-
-            IdentityResult result = await userManager.CreateAsync(appUser, model.password);
-
-            if (result.Succeeded)
-            {
-                try
-                {
-                    await userManager.AddToRoleAsync(appUser, "Customer");  // Assign the "Customer" role to the newly created user
-                    var customer = new Customer
-                    {
-                        ApplicationUserId = appUser.Id,
-                    };
-
-                    await customerRepository.InsertAsync(customer);
-                    return await SendOtpInternal(appUser);      // OTP Sending and return sessionId for verification
-                }
-                catch (Exception)
-                {
-                    // If profile creation fails, delete the Identity user so they can try again
-                    await userManager.DeleteAsync(appUser);
-                    return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed);
-                }
-            }
-            return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed,result.Errors.Select(e => e.Description)); ;
-        }
 
         [HttpPost("verifyOtp")]           //api/Account/verifyotp
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
@@ -213,7 +72,7 @@ namespace Med_Map.Controllers
             //Create a Session record in the database
             Guid sessionId = Guid.NewGuid();
             string jwtId = Guid.NewGuid().ToString();
-            DateTime expirationTime = DateTime.UtcNow.AddHours(100000);
+            DateTime expirationTime = DateTime.UtcNow.AddHours(Constant.tokenExpirationTime);
 
             var session = new UserSession
             {
@@ -250,7 +109,15 @@ namespace Med_Map.Controllers
             var user = await userManager.FindByEmailAsync(model.email);
             if (user == null) return ErrorResponse("User Not Found",ErrorCodes.UserNotFound);
 
-            return await SendOtpInternal(user);
+            try
+            {
+                var otpData = await otpService.GenerateAndSendOtpAsync(user);
+                return SuccessResponse(otpData, "Verification code sent successfully.", SuccessCodes.RegistrationPending);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse("Verification process failed.", ErrorCodes.OtpSendFailed, ex.Message);
+            }
         }
 
         [HttpPost("login")]           //api/Account/login
@@ -271,7 +138,7 @@ namespace Med_Map.Controllers
 
             Guid sessionId = Guid.NewGuid();
             string jwtId = Guid.NewGuid().ToString(); 
-            DateTime expirationTime = DateTime.UtcNow.AddHours(100000);
+            DateTime expirationTime = DateTime.UtcNow.AddHours(Constant.tokenExpirationTime);
 
             await sessionRepository.InsertAsync(new UserSession
             {
@@ -317,74 +184,6 @@ namespace Med_Map.Controllers
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-        // Helper method to Save incoming Images
-        private async Task<string?> SaveFile(IFormFile file, string folderName)
-        {
-            if (file == null || file.Length == 0) return null;
-
-            //Size Validation (3 MB)
-            const long MaxFileSize = 3 * 1024 * 1024;
-            if (file.Length > MaxFileSize)
-                throw new Exception("File size exceeds the 3MB limit.");
-
-            //Extension/MIME Type Validation
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!allowedExtensions.Contains(extension))
-                throw new Exception("Invalid file type. Only JPG, PNG, and WebP are allowed.");
-
-            //Define and Ensure Directory
-            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", folderName);
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            //Secure File Naming
-            string uniqueFileName = $"{Guid.NewGuid()}{extension}";
-            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            //Save the file
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(fileStream);
-            }
-
-            return $"/uploads/{folderName}/{uniqueFileName}";
-        }
-        // Helper method to send otp
-        private async Task<IActionResult> SendOtpInternal(ApplicationUser user)
-        {
-            var otpCode = new Random().Next(100000, 999999).ToString();
-            var otpSessionId = Guid.NewGuid();
-            var expirationTime = DateTime.UtcNow.AddMinutes(5);
-
-            await otpRepository.InsertAsync(new OtpCode
-            {
-                UserId = user.Id,
-                Code = otpCode,
-                SessionId = otpSessionId,
-                ExpiresAt = expirationTime,
-                IsUsed = false
-            });
-
-            var otpData = new OtpResponseDataDTO
-            {
-                sessionId = otpSessionId,
-                expiration = expirationTime
-            };
-            try
-            {
-                string subject = "Med-Map Verification Code";
-                string body = $"<h2>Welcome to Med-Map!</h2><p>Your code is: <b>{otpCode}</b></p>";
-                //await emailService.SendEmailAsync(user.Email, subject, body);
-                Console.WriteLine($"{subject} \n {body}");
-                //remove {otpCode} from the response in production, it's only for testing purposes
-                return SuccessResponse(otpData, $"Verification code sent, please verify using the otp.{otpCode}", SuccessCodes.RegistrationPending);
-            }
-            catch (Exception)
-            {
-                return ErrorResponse("User created, but email failed to send.", ErrorCodes.OtpSendFailed);
-            }
         }
     }
 }

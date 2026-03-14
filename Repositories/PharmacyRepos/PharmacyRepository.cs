@@ -20,11 +20,11 @@ namespace Med_Map.Repositories.PharmacyRepos
 
         public async Task<Pharmacy?> GetByIdAsync(string id)
         {
-            return await _context.Pharmacy
-                        .Include(p => p.Documents)   
-                        .Include(p => p.PhoneNumbers) 
-                        .FirstOrDefaultAsync(p => p.ApplicationUserId == id);
-            
+            var pharmacy = await _context.Pharmacy.FirstOrDefaultAsync(p => p.ApplicationUserId == id);
+            if (pharmacy == null) return null;
+            await _context.Entry(pharmacy).Collection(p => p.Documents).LoadAsync();
+            await _context.Entry(pharmacy).Collection(p => p.PhoneNumbers).LoadAsync();
+            return pharmacy;
         }
         public async Task<List<Pharmacy>> GetByNameAsync(string name)
         {

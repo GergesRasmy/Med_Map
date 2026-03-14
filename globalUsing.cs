@@ -14,7 +14,7 @@ global using Med_Map.Repositories.PharmacyRepos;
 global using Med_Map.Repositories.OrderRepos;
 global using Med_Map.Repositories.MedicineRepos;
 global using Med_Map.Services;
-global using Med_Map.ResponceCodes;
+global using Med_Map.Constants;
 global using Med_Map.DTO;
 global using Med_Map.DTO.OrderDTOs;
 global using Med_Map.DTO.AccountDTOs;

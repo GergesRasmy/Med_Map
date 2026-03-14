@@ -23,31 +23,6 @@ namespace Med_Map.Controllers
         }
         #endregion
 
-        [HttpGet("customerPublicGet")]//api/user/customerPublicGet
-        public async Task<IActionResult> getCustomerPublicDetails([FromQuery] Guid id)
-        {
-            var customer = await customerRepository.GetByIdAsync(id.ToString());
-            if (customer == null)
-                return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
-
-            var user = await userManager.FindByIdAsync(customer.ApplicationUserId.ToString());
-            var data = new PublicCustomerDetailsDTO { userName = user.UserName ,role ="Customer",id = Guid.Parse(customer.ApplicationUserId) };
-
-            return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-
-        [HttpGet("pharmacyPublicGet")]//api/user/pharmacypublicGet
-        public async Task<IActionResult> getPharmacyPublicDetails([FromQuery] Guid id)
-        {
-            var phar = await pharmacyRepository.GetByIdAsync(id.ToString());
-            if (phar == null)
-                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
-
-            var data = MapToPublicDto(phar);
-              
-            return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-
         [HttpGet("privateGet")]//api/user/privateGet
         public async Task<IActionResult> getPrivateDetails()
         {
@@ -118,47 +93,6 @@ namespace Med_Map.Controllers
             {
                 return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
             }
-        }
-
-        [HttpGet("searchPharmacyByName")]//api/user/searchPharmacyByName
-        public async Task<IActionResult> SearchPharmacy([FromQuery]string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                return ErrorResponse("Search term is required.", ErrorCodes.ValidationError);
-
-            var pharmacies = await pharmacyRepository.GetByNameAsync(name);
-
-            var result = pharmacies.Select(p => MapToPublicDto(p)).ToList();
-
-            return SuccessResponse(result, "Search results retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-
-        [HttpGet("nearestPharmacy")]
-        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation)
-        {
-            var NearestPharmacies = await pharmacyRepository.GetNearestPharmacyAsync(MyLocation.latitude,MyLocation.longitude,MyLocation.radiusInMeters);
-            var result = NearestPharmacies.Select(p=>MapToPublicDto(p)).ToList();
-
-            return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-
-        //helper method to convert pharmacy to DTO
-        private PublicPharmacyDetailsDTO MapToPublicDto(Pharmacy phar)
-        {
-            return new PublicPharmacyDetailsDTO
-            {
-                role = "Pharmacy",
-                id = Guid.Parse(phar.ApplicationUserId),
-                pharmacyName = phar.PharmacyName,
-                pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                doctorName = phar.doctorName,
-                address = phar.address,
-                coordinates = phar.Location,
-                openingTime = phar.OpeningTime,
-                closingTime = phar.ClosingTime,
-                is24Hours = phar.Is24Hours,
-                deliveryAvailability = phar.HaveDelivary
-            };
         }
 
     }

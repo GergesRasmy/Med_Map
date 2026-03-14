@@ -27,7 +27,7 @@ namespace Med_Map.Controllers
             this.medicineRepository = medicineRepository;
         }
         #endregion
-        [HttpPost("place")]//api/order/place
+        [HttpPost("place")]                     //api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
             if(!ModelState.IsValid) { 
@@ -87,7 +87,7 @@ namespace Med_Map.Controllers
             };
             return SuccessResponse(response, "Order created successfully", SuccessCodes.DataCreated);
         }
-        [HttpGet("myOrders")]//api/order/myOrders
+        [HttpGet("myOrders")]                   //api/order/myOrders
         public async Task<IActionResult> getMyOrders()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -116,7 +116,7 @@ namespace Med_Map.Controllers
             }).ToList();
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpGet] // api/order?id=
+        [HttpGet]                               // api/order?id=
         public async Task<IActionResult> GetOrderById([FromQuery]string id)
         {
             //get the order from the database
@@ -143,7 +143,7 @@ namespace Med_Map.Controllers
 
             return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [HttpPost("cancel/{orderId}")] // api/order/cancel/{orderId}
+        [HttpPost("cancel/{orderId}")]          // api/order/cancel/{orderId}
         public async Task<IActionResult> CancelOrder(string orderId)
         {
             var success = await orderRepository.CancelOrder(orderId);
