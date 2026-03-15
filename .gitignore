@@ -372,6 +372,7 @@ Postman/
 .postman/
 *.postman_collection.json
 *.postman_environment.json
+/.postman/workflows.yaml
 /postman/collections/MedMap/
 /postman/collections/MedMap/api/account/login/-api-account-login.request.yaml
 /postman/collections/MedMap/api/medicine/.resources/-api-user-pharmacyPublicGet.resources/examples/OK.example.yaml
@@ -381,5 +382,4 @@ Postman/
 /postman/collections/MedMap/api/account/registerCustomer/-api-account-registerCustomer.request.yaml
 .postman
 
-wwwroot
-/.postman/workflows.yaml
+/wwwroot/uploads/*
