@@ -3,10 +3,12 @@
     public class FileService: IFileService
     {
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<FileService> _logger;
 
-        public FileService(IWebHostEnvironment environment)
+        public FileService(IWebHostEnvironment environment, ILogger<FileService> logger)
         {
             _environment = environment;
+            _logger = logger;
         }
 
         public async Task<string> SaveFileAsync(IFormFile file, string folderName)
@@ -70,6 +72,21 @@
             return false;
         }
 
-        public void DeleteFile(string filePath) { /* Delete logic */ }
+        public async Task DeleteFileAsync(string filePath)
+        {
+            string absolutePath = Path.Combine(_environment.WebRootPath, filePath);
+            try
+            {
+                if (File.Exists(absolutePath))
+                {
+                    await Task.Run(() => File.Delete(absolutePath));
+                    _logger.LogInformation("Successfully deleted file: {Path}", absolutePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to cleanup file at {Path}. Exception: {Message}", absolutePath, ex.Message);
+            }
+        }
     }
 }

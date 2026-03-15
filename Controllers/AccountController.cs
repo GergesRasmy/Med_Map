@@ -36,11 +36,43 @@ namespace Med_Map.Controllers
         }
         #endregion
 
+        //TODO testing 
+        [HttpPost("register")]              //api/account/register
+        public async Task<IActionResult> Register([FromBody] RegisterDTO model)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = model.userName,
+                Email = model.email,
+                EmailConfirmed = false
+            };
+            var result = await userManager.CreateAsync(user, model.password);
+            try
+            {
+                if (model.role == "Customer" || model.role == "Pharmacy")
+                    await userManager.AddToRoleAsync(user, model.role);
+                else return ErrorResponse("Role is Invalid", ErrorCodes.InvalidInput);
+            }
+            catch (Exception ex)
+            {
+                await userManager.DeleteAsync(user);
+                return ErrorResponse("Registration failed during profile setup.", ErrorCodes.ProfileCreationFailed, ex.Message);
+            }
+            try
+            {
+                var otpRecord = await otpService.GenerateAndSendOtpAsync(user);
+                return SuccessResponse(otpRecord,"User created, please verify using the OTP.", SuccessCodes.RegistrationPending);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse("User created, but notification failed to send.", ErrorCodes.OtpSendFailed, ex.Message);
+            }
+        }
+
         [HttpPost("verifyOtp")]           //api/Account/verifyotp
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
-            HandleValidationErrors();
-
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
             var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
             if (otpRecord == null) 
@@ -70,7 +102,6 @@ namespace Med_Map.Controllers
         [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
         public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
-            HandleValidationErrors();
 
             //Find the user by email
             var user = await userManager.FindByEmailAsync(model.email);
@@ -96,12 +127,10 @@ namespace Med_Map.Controllers
         [HttpPost("login")]           //api/Account/login
         public async Task<IActionResult> login([FromBody]LoginDTO userDto)
         {
-            HandleValidationErrors();
-
             //Find the user by email and verify the password
             var user = await userManager.FindByEmailAsync(userDto.email);
             if (user == null || !await userManager.CheckPasswordAsync(user, userDto.password))
-                return ErrorResponse("Invaild Email or Password",ErrorCodes.InvalidCredentials); 
+                return ErrorResponse("Invalid Email or Password",ErrorCodes.InvalidCredentials); 
 
             if (!user.EmailConfirmed)         //User must be verified
                 return ErrorResponse("Email not verified, Please verify your Account.", ErrorCodes.EmailUnconfirmed);

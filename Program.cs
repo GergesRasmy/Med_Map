@@ -1,3 +1,4 @@
+using Med_Map.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -10,8 +11,9 @@ public partial class Program
     private static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-       
-        builder.Services.AddControllers().AddJsonOptions(options =>
+
+        builder.Services.AddControllers(options =>{ options.Filters.Add<ValidateModelAttribute>();})
+        .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new NetTopologySuite.IO.Converters.GeoJsonConverterFactory());
             options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;

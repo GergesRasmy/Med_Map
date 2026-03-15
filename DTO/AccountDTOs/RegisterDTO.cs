@@ -1,8 +1,6 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Med_Map.DTO.CustomerDTOs
+﻿namespace Med_Map.DTO.AccountDTOs
 {
-    public class CustomerRegisterDTO
+    public class RegisterDTO
     {
         [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
@@ -12,8 +10,7 @@ namespace Med_Map.DTO.CustomerDTOs
         [EmailAddress(ErrorMessage = "Invalid email format")]
         public string email { get; set; }
         [Required]
-        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
-        public string phoneNumber { get; set; }
+        public string role { get; set; }
         public string password { get; set; }
     }
 }

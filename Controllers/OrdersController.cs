@@ -33,11 +33,10 @@ namespace Med_Map.Controllers
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
+       
         [HttpPost("place")]                     //api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
-            HandleValidationErrors();
-
             // Validate Payment Option
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);

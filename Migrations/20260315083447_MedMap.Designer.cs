@@ -13,8 +13,8 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     [DbContext(typeof(Mm_Context))]
-    [Migration("20260311190520_unique-medicine")]
-    partial class uniquemedicine
+    [Migration("20260315083447_MedMap")]
+    partial class MedMap
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -270,6 +270,9 @@ namespace Med_Map.Migrations
                     b.Property<string>("MedicalHistory")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("address")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("ApplicationUserId");
 
                     b.ToTable("Customer");
@@ -508,47 +511,17 @@ namespace Med_Map.Migrations
                     b.Property<string>("ApplicationUserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<TimeSpan>("ClosingTime")
-                        .HasColumnType("time");
+                    b.Property<Guid?>("ActiveProfileId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("HaveDelivary")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("Is24Hours")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LicenseNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Point>("Location")
-                        .IsRequired()
-                        .HasColumnType("geography");
-
-                    b.Property<TimeSpan>("OpeningTime")
-                        .HasColumnType("time");
-
-                    b.Property<string>("PharmacyName")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<double>("Rating")
-                        .HasColumnType("float");
-
-                    b.Property<string>("address")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("doctorName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("doctorPhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid?>("PendingProfileId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("ApplicationUserId");
+
+                    b.HasIndex("ActiveProfileId");
+
+                    b.HasIndex("PendingProfileId");
 
                     b.ToTable("Pharmacy");
                 });
@@ -567,12 +540,17 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<Guid?>("PharmacyProfileId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("PharmacyId");
+
+                    b.HasIndex("PharmacyProfileId");
 
                     b.ToTable("PharmacyDocument");
                 });
@@ -627,11 +605,59 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<Guid?>("PharmacyProfileId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PharmacyId");
 
+                    b.HasIndex("PharmacyProfileId");
+
                     b.ToTable("PharmacyPhoneNumbers");
+                });
+
+            modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeSpan>("ClosingTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("HaveDelivary")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Is24Hours")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LicenseNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geography");
+
+                    b.Property<TimeSpan>("OpeningTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("PharmacyName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<double>("Rating")
+                        .HasColumnType("float");
+
+                    b.Property<string>("address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PharmacyProfille");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -925,11 +951,25 @@ namespace Med_Map.Migrations
 
             modelBuilder.Entity("Med_Map.Models.pharmacy.Pharmacy", b =>
                 {
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "ActiveProfile")
+                        .WithMany()
+                        .HasForeignKey("ActiveProfileId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Med_Map.Models.ApplicationUser", "User")
                         .WithOne("Pharmacy")
                         .HasForeignKey("Med_Map.Models.pharmacy.Pharmacy", "ApplicationUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "PendingProfile")
+                        .WithMany()
+                        .HasForeignKey("PendingProfileId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ActiveProfile");
+
+                    b.Navigation("PendingProfile");
 
                     b.Navigation("User");
                 });
@@ -937,10 +977,14 @@ namespace Med_Map.Migrations
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyDocument", b =>
                 {
                     b.HasOne("Med_Map.Models.pharmacy.Pharmacy", "Pharmacy")
-                        .WithMany("Documents")
+                        .WithMany()
                         .HasForeignKey("PharmacyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("PharmacyProfileId");
 
                     b.Navigation("Pharmacy");
                 });
@@ -973,10 +1017,14 @@ namespace Med_Map.Migrations
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyPhoneNumbers", b =>
                 {
                     b.HasOne("Med_Map.Models.pharmacy.Pharmacy", "Pharmacy")
-                        .WithMany("PhoneNumbers")
+                        .WithMany()
                         .HasForeignKey("PharmacyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
+                        .WithMany("PhoneNumbers")
+                        .HasForeignKey("PharmacyProfileId");
 
                     b.Navigation("Pharmacy");
                 });
@@ -1044,7 +1092,7 @@ namespace Med_Map.Migrations
                     b.Navigation("OrderItems");
                 });
 
-            modelBuilder.Entity("Med_Map.Models.pharmacy.Pharmacy", b =>
+            modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyProfile", b =>
                 {
                     b.Navigation("Documents");
 

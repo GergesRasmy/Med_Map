@@ -18,6 +18,7 @@ namespace Med_Map.Models
         public DbSet<OrderItem> OrderItem { get; set; }
         public DbSet<Orders> Orders { get; set; }
         public DbSet<Pharmacy> Pharmacy { get; set; }
+        public DbSet<PharmacyProfile> PharmacyProfille { get; set; }
         public DbSet<PharmacyInventory> PharmacyInventory { get; set; }
         public DbSet<Recommendation> Recommendation { get; set; }
         public DbSet<Wallet> Wallet { get; set; }
@@ -38,54 +39,54 @@ namespace Med_Map.Models
         {
             base.OnModelCreating(builder);
 
-            // Enforce unique email at the database level by adding a unique index
-            // on NormalizedEmail (Identity uses Normalized values for lookups).
+            // 1. User Indexes
             builder.Entity<ApplicationUser>()
-                .HasIndex(u => u.NormalizedEmail)
-                .IsUnique();
+                .HasIndex(u => u.NormalizedEmail).IsUnique();
             builder.Entity<ApplicationUser>()
-                 .HasIndex(u => u.PhoneNumber)
-                 .IsUnique();
+                .HasIndex(u => u.PhoneNumber).IsUnique();
 
+            // 2. OTP Configuration
             builder.Entity<OtpCode>(entity =>
             {
                 entity.HasKey(e => e.Id);
-
-                // Index SessionId for faster lookup during VerifyOTP action
                 entity.HasIndex(e => e.SessionId).IsUnique();
-
                 entity.Property(e => e.Code).IsRequired().HasMaxLength(6);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
 
-                // Relationship: One User can have many OTP attempts
-                entity.HasOne(e => e.User)
+            // 3. Session Configuration
+            builder.Entity<UserSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.JwtId).IsUnique();
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // 4. Customer Configuration
+            builder.Entity<Customer>()
+                .HasOne(c => c.User)
+                .WithOne(u => u.Customer)
+                .HasForeignKey<Customer>(c => c.ApplicationUserId);
+
+            // 5. Pharmacy Configuration 
+            builder.Entity<Pharmacy>(entity =>
+            {
+                entity.HasKey(p => p.ApplicationUserId);
+                entity.HasOne(p => p.User)
+                      .WithOne(u => u.Pharmacy)
+                      .HasForeignKey<Pharmacy>(p => p.ApplicationUserId);
+                entity.HasOne(p => p.ActiveProfile)
                       .WithMany()
-                      .HasForeignKey(e => e.UserId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                      .HasForeignKey(p => p.ActiveProfileId) 
+                      .OnDelete(DeleteBehavior.Restrict);
 
-
-                builder.Entity<UserSession>(entity =>
-                {
-                    entity.HasKey(e => e.Id);
-                    entity.HasIndex(e => e.JwtId).IsUnique();
-
-                    entity.HasOne(e => e.User)
-                          .WithMany()
-                          .HasForeignKey(e => e.UserId)
-                          .OnDelete(DeleteBehavior.Cascade);
-                });
-                builder.Entity<Customer>()
-                        .HasOne(c => c.User)
-                        .WithOne(u => u.Customer) 
-                        .HasForeignKey<Customer>(c => c.ApplicationUserId)
-                        .IsRequired();
-                builder.Entity<Pharmacy>()
-                        .HasOne(p => p.User)
-                        .WithOne(u => u.Pharmacy)
-                        .HasForeignKey<Pharmacy>(c => c.ApplicationUserId)
-                        .IsRequired();
+                entity.HasOne(p => p.PendingProfile)
+                      .WithMany()
+                      .HasForeignKey(p => p.PendingProfileId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
         #endregion
-    
+
     }
 }

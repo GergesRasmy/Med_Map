@@ -2,7 +2,8 @@
 {
     public interface IPharmacyRepository
     {
-        Task InsertAsync(Pharmacy pharmacy);
+        Task SaveToPendingAsync(string userId, PharmacyProfile profile);
+        Task<bool> ActivateProfileAsync(string userId);
         Task<Pharmacy?> GetByIdAsync(string id);
         Task<List<Pharmacy>> GetByNameAsync(string name);
         Task<List<Pharmacy>> GetNearestPharmacyAsync(double latitude, double longitude, double radiusInMeters);

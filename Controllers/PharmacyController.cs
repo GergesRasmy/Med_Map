@@ -1,4 +1,5 @@
 ﻿using Med_Map.DTO.CustomerDTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -25,36 +26,21 @@ namespace Med_Map.Controllers
             this.medicineRepository = medicineRepository;
         }
         #endregion
-        [HttpPost("registerPharmacy")]              //api/pharmacy/registerPharmacy
-        public async Task<IActionResult> registerPharmacy([FromForm] PharmacyRegisterDTO model)
+        [Authorize(Roles ="Pharmacy")]
+        [HttpPost("register")]              //api/pharmacy/register
+        public async Task<IActionResult> registerPharmacy([FromForm] PharmacyUpdateDTO model)
         {
-            HandleValidationErrors();
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null)return ErrorResponse("User not found.", ErrorCodes.Unauthorized);
+            var existing = await pharmacyRepository.GetByIdAsync(userId);
+            if (existing != null) return ErrorResponse("Profile already initialized.", ErrorCodes.ValidationError);
 
-            // Check if the user already exists
-            if (await userManager.FindByEmailAsync(model.email) != null) 
-                return ErrorResponse("Email already in use.", ErrorCodes.EmailAlreadyInUse);
-
-            // Create the Identity User
-            ApplicationUser appUser = new ApplicationUser
-            {
-                UserName = model.pharmacyName,
-                Email = model.email,
-                EmailConfirmed = false,
-                IsActive = false
-            };
-
-            IdentityResult result = await userManager.CreateAsync(appUser, model.password);
-
-            if (!result.Succeeded)
-                return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed, result.Errors.Select(e => e.Description));
-            
+            var uploadedFiles = new List<string>();
             try
             {
                 var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
-                await userManager.AddToRoleAsync(appUser, "Pharmacy");      // Assign Role
-                var pharmacy = new Pharmacy                                 // Create Pharmacy Profile record
+                var pharmacy = new PharmacyProfile               // Create Pharmacy Profile record
                 {
-                    ApplicationUserId = appUser.Id,
                     PharmacyName = model.pharmacyName,
                     LicenseNumber = model.licenseNumber,
                     Location = location,
@@ -63,8 +49,6 @@ namespace Med_Map.Controllers
                     ClosingTime = model.closingTime,
                     Is24Hours = model.is24Hours,
                     HaveDelivary = model.deliveryAvailability,
-                    doctorName = model.doctorName,
-                    doctorPhoneNumber = model.doctorPhoneNumber,
                     PhoneNumbers = new List<PharmacyPhoneNumbers>(),
                     Documents = new List<PharmacyDocument>()
                 };
@@ -72,64 +56,113 @@ namespace Med_Map.Controllers
                 {
                     if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
                     {
-                        pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers
-                        {
-                            Number = phone,
-                            Pharmacy = pharmacy,
-                            PharmacyId = appUser.Id
-                        });
+                        pharmacy.PhoneNumbers.Add(new PharmacyPhoneNumbers { Number = phone });
                     }
-                    else
-                    {
-                        return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
-                    }
+                    else return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
                 }
-                try
+                foreach (var file in model.nationalIds)
                 {
-                    //Process National IDs
+                    string path = await fileService.SaveFileAsync(file, "National_Ids");
+                    uploadedFiles.Add(path);
+                    pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                }
+
+                foreach (var file in model.licenseImages)
+                {
+                    string path = await fileService.SaveFileAsync(file, "Pharmacy_Licenses");
+                    uploadedFiles.Add(path); 
+                    pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                }
+                await pharmacyRepository.SaveToPendingAsync(userId,pharmacy);
+                return SuccessResponse("Update submitted successfully.", SuccessCodes.RegistrationPending);
+            }
+            catch (Exception ex)
+            {
+                // Delete files that were successfully saved before the error occurred
+                foreach (var filePath in uploadedFiles)
+                {
+                    await fileService.DeleteFileAsync(filePath);
+                }
+
+                return ErrorResponse("File processing failed. Changes rolled back.", ErrorCodes.ValidationError, ex.Message);
+            }
+
+        }
+
+        [HttpPost("update")]
+        [Authorize(Roles = "Pharmacy")]
+        public async Task<IActionResult> UpdatePharmacy([FromForm] PharmacyUpdateDTO model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy == null) return ErrorResponse("Pharmacy profile not found. Please register first.", ErrorCodes.UserNotFound);
+
+            var uploadedFiles = new List<string>();
+            try
+            {
+                //Update basic fields that doesn't need reviewing
+                pharmacy.ActiveProfile.HaveDelivary = model.deliveryAvailability;
+                pharmacy.ActiveProfile.Is24Hours = model.is24Hours;
+                pharmacy.ActiveProfile.OpeningTime = model.openingTime;
+                pharmacy.ActiveProfile.ClosingTime = model.closingTime;
+
+                //Update basic fields that does need reviewing
+                if (pharmacy.PendingProfile == null)
+                {
+                    pharmacy.PendingProfile = new PharmacyProfile();
+                }
+                var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
+                pharmacy.PendingProfile.Location = location;
+                pharmacy.PendingProfile.PharmacyName = model.pharmacyName;
+                pharmacy.PendingProfile.address = model.address;
+                pharmacy.PendingProfile.LicenseNumber = model.licenseNumber;
+                //Process Files
+
+                if (model.nationalIds != null)
+                {
                     foreach (var file in model.nationalIds)
                     {
                         string path = await fileService.SaveFileAsync(file, "National_Ids");
-                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                        uploadedFiles.Add(path);
+                        pharmacy.PendingProfile.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
                     }
-
-                    //Process License Images
+                }
+                if (model.licenseImages != null)
+                {
                     foreach (var file in model.licenseImages)
                     {
                         string path = await fileService.SaveFileAsync(file, "Pharmacy_Licenses");
-                        pharmacy.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                        uploadedFiles.Add(path);
+                        pharmacy.PendingProfile.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
                     }
                 }
-                catch (Exception ex)
+                foreach (var phone in model.pharmacyPhones)
                 {
-                    // If ANY file fails, the whole process stops here.
-                    return ErrorResponse("File processing failed", ErrorCodes.ValidationError, ex.Message);
+                    if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
+                    {
+                        pharmacy.PendingProfile.PhoneNumbers.Add(new PharmacyPhoneNumbers { Number = phone });
+                    }
+                    else return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
                 }
-                await pharmacyRepository.InsertAsync(pharmacy);
-            }
-            catch (Exception)
-            {
-                // If profile creation fails, delete the Identity user so they can try again
-                await userManager.DeleteAsync(appUser);
-                return ErrorResponse("Registration failed during profile creation.", ErrorCodes.ProfileCreationFailed);
-            }
-            try
-            {
-                var otp = await otpService.GenerateAndSendOtpAsync(appUser);
-                return SuccessResponse(otp, $"Verification code sent, please verify using the OTP.", SuccessCodes.RegistrationPending);
-            }
-            catch (Exception)
-            {
-                return ErrorResponse("User created, but email failed to send, Request new OTP.", ErrorCodes.OtpSendFailed);
-            }
 
+                await pharmacyRepository.SaveChangesAsync();
+                return SuccessResponse("Pharmacy updated successfully.", SuccessCodes.DataUpdated);
+            }
+            catch (Exception ex)
+            {
+                // Rollback files if database update fails
+                foreach (var path in uploadedFiles) await fileService.DeleteFileAsync(path);
+                return ErrorResponse("File processing failed. Changes rolled back.", ErrorCodes.ValidationError, ex.Message);
+            }
         }
 
         [HttpGet("pharmacyPublicGet")]              //api/pharmacy/pharmacypublicGet
         public async Task<IActionResult> getPharmacyPublicDetails([FromQuery] string id)
         {
             var phar = await pharmacyRepository.GetByIdAsync(id);
-            if (phar == null)
+            if (phar.ActiveProfile == null)
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var data = MapToPublicDto(phar);
@@ -167,18 +200,18 @@ namespace Med_Map.Controllers
             {
                 role = "Pharmacy",
                 id = Guid.Parse(phar.ApplicationUserId),
-                pharmacyName = phar.PharmacyName,
-                pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                doctorName = phar.doctorName,
-                address = phar.address,
-                coordinates = phar.Location,
-                openingTime = phar.OpeningTime,
-                closingTime = phar.ClosingTime,
-                is24Hours = phar.Is24Hours,
-                deliveryAvailability = phar.HaveDelivary
+                pharmacyName = phar.ActiveProfile.PharmacyName,
+                pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
+                //doctorName = phar.ActiveProfile.doctorName,
+                address = phar.ActiveProfile.address,
+                coordinates = phar.ActiveProfile.Location,
+                openingTime = phar.ActiveProfile.OpeningTime,
+                closingTime = phar.ActiveProfile.ClosingTime,
+                is24Hours = phar.ActiveProfile.Is24Hours,
+                deliveryAvailability = phar.ActiveProfile.HaveDelivary
             };
         }
-
+        
     }
 }
 

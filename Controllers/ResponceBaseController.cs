@@ -2,6 +2,7 @@
 using Med_Map.DTO.ResponseDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Med_Map.Controllers
 {
@@ -22,16 +23,5 @@ namespace Med_Map.Controllers
         [NonAction]
         protected IActionResult ErrorResponse(string message, string code = "Failed", object errors = null)
             => BadRequest(new ErrorResponseDTO<object> { success = false, message = message, code = code, error = errors });
-
-        [NonAction]
-        protected IActionResult HandleValidationErrors()
-        {
-            var errors = ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage)
-                .ToList();
-
-            return ErrorResponse("Validation failed", ErrorCodes.ValidationError, errors);
-        }
     }
 }

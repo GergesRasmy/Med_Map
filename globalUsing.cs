@@ -2,6 +2,7 @@
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.AspNetCore.Identity;
 global using NetTopologySuite.Geometries;
+global using Med_Map.Filters;
 global using Med_Map.Models;
 global using Med_Map.Models.AI;
 global using Med_Map.Models.customer;

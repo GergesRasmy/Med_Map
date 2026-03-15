@@ -27,8 +27,6 @@ namespace Med_Map.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
-            HandleValidationErrors();
-
             if (await medicineRepository.ExistsAsync(medicine.tradeName))
             {
                 return ErrorResponse("A medicine with this trade name already exists.", ErrorCodes.ValidationError);
@@ -83,8 +81,6 @@ namespace Med_Map.Controllers
         [HttpPost("update")]            //api/medicine/update
         public async Task<IActionResult> UpdateMedicine([FromForm] UpdateMedicineDTO NewMedicine)
         {
-            HandleValidationErrors();
-
             //Check if the new trade name is already taken by another medicine (excluding the current medicine)
             var isNameTaken = await medicineRepository.ExistsAsync(NewMedicine.tradeName);
             if (isNameTaken)

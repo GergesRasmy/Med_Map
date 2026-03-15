@@ -27,8 +27,6 @@ namespace Med_Map.Controllers
         [HttpPost("insertMedicine")]                //api/pharmacyInventory/insertMedicine
         public async Task<IActionResult> InsertMedicine([FromBody] PharmacyInvetoryDTO model)
         {
-            HandleValidationErrors();
-
             // Verify the Pharmacy exists
             var pharmacy = await pharmacyRepository.GetByIdAsync(model.pharmacyId);
             if (pharmacy == null)
@@ -67,8 +65,6 @@ namespace Med_Map.Controllers
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
         public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
         {
-            HandleValidationErrors();
-
             //Fetch the existing record
             var existingItem = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyId, model.medicineId);
             if (existingItem == null)
@@ -93,8 +89,6 @@ namespace Med_Map.Controllers
         [HttpDelete("removeMedicine")] // api/pharmacy/removeMedicine
         public async Task<IActionResult> RemoveMedicine([FromBody] InventoryReference model)
         {
-            HandleValidationErrors();
-
             var success = await pharmacyInventoryRepository.RemoveMedicineAsync(model.PharmacyId, model.MedicineId);
 
             if (!success)

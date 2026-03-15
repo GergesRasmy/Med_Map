@@ -31,7 +31,7 @@
             };
 
             string subject = "Med-Map Verification Code";
-            string body = $"<h2>Welcome to Med-Map!</h2><p>Your code is: <b>{otpCode}</b></p>";
+            string body = $"<h2>Welcome to Med-Map!{user.UserName}</h2><p>Your code is: <b>{otpCode}</b></p>";
             Console.WriteLine($"{subject} \n {body}");
             //await _emailService.SendEmailAsync(user.Email, subject, body);
 

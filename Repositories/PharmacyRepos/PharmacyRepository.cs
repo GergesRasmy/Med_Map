@@ -12,44 +12,72 @@ namespace Med_Map.Repositories.PharmacyRepos
             _context = context;
         }
 
-        public async Task InsertAsync(Pharmacy pharmacy)
+        public async Task SaveToPendingAsync(string userId, PharmacyProfile newProfile)
         {
-            _context.Pharmacy.Add(pharmacy);
-            await SaveChangesAsync();
+            var pharmacy = await _context.Pharmacy
+                .Include(p => p.PendingProfile)
+                .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
+
+            if (pharmacy == null) throw new Exception("Pharmacy not found");
+
+            if (pharmacy.PendingProfile != null)
+            {
+                _context.PharmacyProfille.Remove(pharmacy.PendingProfile);
+            }
+
+            pharmacy.PendingProfile = newProfile;
+            await _context.SaveChangesAsync();
+        }
+        public async Task<bool> ActivateProfileAsync(string userId)
+        {
+            var pharmacy = await _context.Pharmacy
+                .Include(p => p.ActiveProfile)
+                .Include(p => p.PendingProfile)
+                .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
+
+            if (pharmacy == null || pharmacy.PendingProfile == null) return false;
+
+            pharmacy.ActiveProfile = pharmacy.PendingProfile;
+
+            pharmacy.PendingProfile = null;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<Pharmacy?> GetByIdAsync(string id)
         {
-            var pharmacy = await _context.Pharmacy.FirstOrDefaultAsync(p => p.ApplicationUserId == id);
-            if (pharmacy == null) return null;
-            await _context.Entry(pharmacy).Collection(p => p.Documents).LoadAsync();
-            await _context.Entry(pharmacy).Collection(p => p.PhoneNumbers).LoadAsync();
-            return pharmacy;
+            return await _context.Pharmacy
+                                 .Include(p => p.ActiveProfile)
+                                     .ThenInclude(ap => ap!.Documents)
+                                 .Include(p => p.ActiveProfile)
+                                     .ThenInclude(ap => ap!.PhoneNumbers)
+                                 .FirstOrDefaultAsync(p => p.ApplicationUserId == id);
         }
         public async Task<List<Pharmacy>> GetByNameAsync(string name)
         {
             string normalizedSearch = name.ToUpper();
-
-            var pharmacies = await  _context.Pharmacy
-                                    .Include(p => p.PhoneNumbers)
-                                    .Include(p => p.User)
-                                    .Where(p =>
-                                        p.doctorName != null && p.doctorName.ToUpper().Contains(normalizedSearch) ||
-                                        (p.User != null && p.User.NormalizedUserName != null && p.User.NormalizedUserName.Contains(normalizedSearch)))
-                                    .ToListAsync();
-            return pharmacies;
+            return await _context.Pharmacy
+                                 .Include(p => p.ActiveProfile)
+                                     .ThenInclude(ap => ap!.PhoneNumbers)
+                                 .Include(p => p.User)
+                                 .Where(p =>
+                                     (p.ActiveProfile != null && p.ActiveProfile.PharmacyName != null &&
+                                      p.ActiveProfile.PharmacyName.ToUpper().Contains(normalizedSearch)) ||
+                                     (p.User != null && p.User.NormalizedUserName != null &&
+                                      p.User.NormalizedUserName.Contains(normalizedSearch)))
+                                 .ToListAsync();
         }
         public async Task<List<Pharmacy>> GetNearestPharmacyAsync(double latitude, double longitude, double radiusInMeters)
         {
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
             var myLocation = geometryFactory.CreatePoint(new Coordinate(longitude, latitude));
 
-            var pharmacies = await _context.Pharmacy
-                .Include(p => p.PhoneNumbers)
-                .Where(p => p.Location != null && p.Location.Distance(myLocation) <= (radiusInMeters))
-                .OrderBy(p => p.Location.Distance(myLocation))
+            return await _context.Pharmacy
+                .Include(p => p.ActiveProfile)
+                .Where(p => p.ActiveProfile != null && p.ActiveProfile.Location.Distance(myLocation) * 111320 <= radiusInMeters)
+                .OrderBy(p => p.ActiveProfile!.Location.Distance(myLocation))
                 .ToListAsync();
-            return pharmacies;
         }
 
         public async Task SaveChangesAsync()

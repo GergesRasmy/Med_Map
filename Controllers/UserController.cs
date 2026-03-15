@@ -60,12 +60,12 @@ namespace Med_Map.Controllers
             else if (role == "Pharmacy")
             {
                 var phar = await pharmacyRepository.GetByIdAsync(userId);
-                if (phar == null)
-                    return ErrorResponse("Pharmacy profile not found", ErrorCodes.UserNotFound);
+                if (phar.ActiveProfile == null)
+                    return ErrorResponse("Active pharmacy profile not found", ErrorCodes.UserNotFound);
                 // Extract document URLs
                 List<string> LicenseImageUrls = new List<string>();
                 List<string> NationalIdUrls = new List<string>();
-                foreach (var doc in phar.Documents)
+                foreach (var doc in phar.ActiveProfile.Documents)
                 {
                     if (doc.Type == DocumentType.PharmacyLicense)
                     {
@@ -78,18 +78,18 @@ namespace Med_Map.Controllers
                 {
                     role = role,
                     id = Guid.Parse(phar.ApplicationUserId),
+                    doctorName = user.UserName??"",
                     email = user.Email ?? "",
-                    pharmacyName = phar.PharmacyName,
-                    pharmacyPhones = phar.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                    doctorName = phar.doctorName,
-                    doctorPhoneNumber = phar.doctorPhoneNumber,
-                    address = phar.address,
-                    coordinates = phar.Location,
-                    openingTime = phar.OpeningTime,
-                    closingTime = phar.ClosingTime,
-                    is24Hours = phar.Is24Hours,
-                    deliveryAvailability = phar.HaveDelivary,
-                    licenseNumber = phar.LicenseNumber,
+                    doctorPhoneNumber = user.PhoneNumber??"",
+                    pharmacyName = phar.ActiveProfile.PharmacyName,
+                    pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
+                    address = phar.ActiveProfile.address,
+                    coordinates = phar.ActiveProfile.Location,
+                    openingTime = phar.ActiveProfile.OpeningTime,
+                    closingTime = phar.ActiveProfile.ClosingTime,
+                    is24Hours = phar.ActiveProfile.Is24Hours,
+                    deliveryAvailability = phar.ActiveProfile.HaveDelivary,
+                    licenseNumber = phar.ActiveProfile.LicenseNumber,
                     licenseImageUrls = LicenseImageUrls,
                     nationalIdUrls = NationalIdUrls
                 };
@@ -98,6 +98,6 @@ namespace Med_Map.Controllers
             // Handle invalid role
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
-
+        
     }
 }

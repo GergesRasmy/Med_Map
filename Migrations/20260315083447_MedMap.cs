@@ -5,24 +5,18 @@
 namespace Med_Map.Migrations
 {
     /// <inheritdoc />
-    public partial class customer_address : Migration
+    public partial class MedMap : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "address",
-                table: "Customer",
-                type: "nvarchar(max)",
-                nullable: true);
+
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "address",
-                table: "Customer");
+
         }
     }
 }

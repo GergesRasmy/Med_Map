@@ -20,7 +20,6 @@ namespace Med_Map.Repositories.CustomerRepos
         {
             return await _context.Customer.Include(c => c.User).FirstAsync(c => c.ApplicationUserId == id);
         }
-        
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
