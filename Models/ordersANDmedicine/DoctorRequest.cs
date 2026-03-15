@@ -36,10 +36,9 @@ namespace Med_Map.Models.ordersANDmedicine
         public string AssignedPersonnel { get; set; }
 
         #region foreign keys
-        [Required]
-        public string PharmacyApplicationUserId { get; set; }
-        [ForeignKey("PharmacyApplicationUserId")]
-        public Pharmacy pharmacy { get; set; }
+        public Guid PharmacyProfileId { get; set; }
+        [ForeignKey("PharmacyProfileId")]
+        public PharmacyProfile Pharmacy { get; set; }
 
         [Required]
         public string CustomerApplicationUserId { get; set; }

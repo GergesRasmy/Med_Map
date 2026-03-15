@@ -45,7 +45,7 @@ namespace Med_Map.Controllers
             // Map and Insert then return response
             var inventoryItem = new PharmacyInventory
             {
-                PharmacyId = model.pharmacyId,
+                PharmacyProfileId = Guid.Parse(model.pharmacyId),
                 MedicineId = model.medicineId,
                 StockQuantity = model.quantity,
                 ExpiryDate = model.expiryDate,

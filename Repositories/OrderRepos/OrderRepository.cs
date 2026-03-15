@@ -20,7 +20,7 @@
             IQueryable<Orders> query = _context.Orders.Include(o => o.OrderItems) 
                                        .ThenInclude(oi => oi.Medicine);
             if (role == "Pharmacy")
-                return await query.Where(o => o.PharmacyId == id).ToListAsync();
+                return await query.Where(o => o.PharmacyProfileId == Guid.Parse(id)).ToListAsync();
 
             if (role == "Customer")
                 return await query.Where(o => o.CustomerId == id).ToListAsync();
@@ -55,7 +55,7 @@
                 foreach (var item in order.OrderItems)
                 {
                     var inventory = await _context.PharmacyInventory
-                        .FirstOrDefaultAsync(pi => pi.PharmacyId == order.PharmacyId
+                        .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == order.PharmacyProfileId
                                                 && pi.MedicineId == item.MedicineId);
 
                     if (inventory != null)

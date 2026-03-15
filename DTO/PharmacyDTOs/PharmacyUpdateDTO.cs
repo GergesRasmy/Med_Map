@@ -4,17 +4,22 @@ namespace Med_Map.DTO.PharmacyDTOs
 {
     public class PharmacyUpdateDTO
     {
-        [Required]
+        
         [EmailAddress(ErrorMessage = "Invalid email format")]
-        public string email { get; set; }
-        public string password { get; set; }
+        public string? email { get; set; }
+        public string? password { get; set; }
 
         [Required]
         [MinLength(3, ErrorMessage = "Minimum length is 3")]
         [MaxLength(30, ErrorMessage = "Maximum length is 30")]
         public string pharmacyName { get; set; }
         [Required]
-
+        [MinLength(3, ErrorMessage = "Minimum length is 3")]
+        [MaxLength(30, ErrorMessage = "Maximum length is 30")]
+        public string? doctorName { get; set; }
+        [RegularExpression(@"^(\+201|01)[0125][0-9]{8}$", ErrorMessage = "Invalid phone number.")]
+        public string? phoneNumber { get; set; }
+        [Required]
         public List<string> pharmacyPhones { get; set; } = new List<string>();
         [Required]
         public string address { get; set; }

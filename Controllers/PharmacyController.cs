@@ -1,8 +1,8 @@
-﻿using Med_Map.DTO.CustomerDTOs;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace Med_Map.Controllers
 {
@@ -32,8 +32,12 @@ namespace Med_Map.Controllers
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)return ErrorResponse("User not found.", ErrorCodes.Unauthorized);
-            var existing = await pharmacyRepository.GetByIdAsync(userId);
-            if (existing != null) return ErrorResponse("Profile already initialized.", ErrorCodes.ValidationError);
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
+                return ErrorResponse("Phone number is already in use.", ErrorCodes.PhoneAlreadyInUse);
+            else user.PhoneNumber = model.phoneNumber;
 
             var uploadedFiles = new List<string>();
             try
@@ -79,11 +83,7 @@ namespace Med_Map.Controllers
             catch (Exception ex)
             {
                 // Delete files that were successfully saved before the error occurred
-                foreach (var filePath in uploadedFiles)
-                {
-                    await fileService.DeleteFileAsync(filePath);
-                }
-
+                foreach (var filePath in uploadedFiles) await fileService.DeleteFileAsync(filePath);
                 return ErrorResponse("File processing failed. Changes rolled back.", ErrorCodes.ValidationError, ex.Message);
             }
 
@@ -103,30 +103,26 @@ namespace Med_Map.Controllers
             try
             {
                 //Update basic fields that doesn't need reviewing
-                pharmacy.ActiveProfile.HaveDelivary = model.deliveryAvailability;
-                pharmacy.ActiveProfile.Is24Hours = model.is24Hours;
-                pharmacy.ActiveProfile.OpeningTime = model.openingTime;
-                pharmacy.ActiveProfile.ClosingTime = model.closingTime;
-
-                //Update basic fields that does need reviewing
-                if (pharmacy.PendingProfile == null)
+                if (pharmacy.ActiveProfile != null)
                 {
-                    pharmacy.PendingProfile = new PharmacyProfile();
+                    await pharmacyRepository.UpdateInstantFieldsAsync(userId, model);
                 }
-                var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
-                pharmacy.PendingProfile.Location = location;
-                pharmacy.PendingProfile.PharmacyName = model.pharmacyName;
-                pharmacy.PendingProfile.address = model.address;
-                pharmacy.PendingProfile.LicenseNumber = model.licenseNumber;
-                //Process Files
 
+                var validatedPhones = new List<string>();
+                foreach (var phone in model.pharmacyPhones)
+                {
+                    if (!Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
+                        return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
+                    validatedPhones.Add(phone);
+                }
+                var documents = new List<PharmacyDocument>();
                 if (model.nationalIds != null)
                 {
                     foreach (var file in model.nationalIds)
                     {
                         string path = await fileService.SaveFileAsync(file, "National_Ids");
                         uploadedFiles.Add(path);
-                        pharmacy.PendingProfile.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
+                        documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
                     }
                 }
                 if (model.licenseImages != null)
@@ -135,19 +131,26 @@ namespace Med_Map.Controllers
                     {
                         string path = await fileService.SaveFileAsync(file, "Pharmacy_Licenses");
                         uploadedFiles.Add(path);
-                        pharmacy.PendingProfile.Documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
+                        documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
                     }
-                }
-                foreach (var phone in model.pharmacyPhones)
-                {
-                    if (System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
-                    {
-                        pharmacy.PendingProfile.PhoneNumbers.Add(new PharmacyPhoneNumbers { Number = phone });
-                    }
-                    else return ErrorResponse("Wrong phone number format.", ErrorCodes.WrongFormat);
                 }
 
-                await pharmacyRepository.SaveChangesAsync();
+                //Update basic fields that does need reviewing
+                var location = new Point(model.longitude, model.latitude) { SRID = 4326 };
+                var newPending = new PharmacyProfile
+                {
+                    Location = location,
+                    PharmacyName = model.pharmacyName,
+                    address = model.address,
+                    LicenseNumber = model.licenseNumber,
+                    HaveDelivary = model.deliveryAvailability,
+                    Is24Hours = model.is24Hours,
+                    OpeningTime = model.openingTime,
+                    ClosingTime = model.closingTime,
+                    Documents = documents,
+                    PhoneNumbers = validatedPhones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()
+                };
+                await pharmacyRepository.SaveToPendingAsync(userId, newPending);
                 return SuccessResponse("Pharmacy updated successfully.", SuccessCodes.DataUpdated);
             }
             catch (Exception ex)
@@ -162,7 +165,7 @@ namespace Med_Map.Controllers
         public async Task<IActionResult> getPharmacyPublicDetails([FromQuery] string id)
         {
             var phar = await pharmacyRepository.GetByIdAsync(id);
-            if (phar.ActiveProfile == null)
+            if (phar == null || phar.ActiveProfile == null)
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var data = MapToPublicDto(phar);
@@ -202,7 +205,6 @@ namespace Med_Map.Controllers
                 id = Guid.Parse(phar.ApplicationUserId),
                 pharmacyName = phar.ActiveProfile.PharmacyName,
                 pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                //doctorName = phar.ActiveProfile.doctorName,
                 address = phar.ActiveProfile.address,
                 coordinates = phar.ActiveProfile.Location,
                 openingTime = phar.ActiveProfile.OpeningTime,

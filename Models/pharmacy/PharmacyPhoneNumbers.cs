@@ -12,9 +12,9 @@ namespace Med_Map.Models.pharmacy
         public string Number { get; set; }
 
         // Link back to Pharmacy
-        public string PharmacyId { get; set; }
-        [ForeignKey("PharmacyId")]
-        public Pharmacy Pharmacy { get; set; }
+        public Guid PharmacyProfileId { get; set; }
+        [ForeignKey("PharmacyProfileId")]
+        public PharmacyProfile Pharmacy { get; set; }
 
     }
 }

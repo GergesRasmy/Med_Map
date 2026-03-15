@@ -11,21 +11,50 @@ namespace Med_Map.Repositories.PharmacyRepos
         {
             _context = context;
         }
-
         public async Task SaveToPendingAsync(string userId, PharmacyProfile newProfile)
         {
             var pharmacy = await _context.Pharmacy
                 .Include(p => p.PendingProfile)
+                    .ThenInclude(pp => pp!.Documents)
+                .Include(p => p.PendingProfile)
+                    .ThenInclude(pp => pp!.PhoneNumbers)
                 .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
 
             if (pharmacy == null) throw new Exception("Pharmacy not found");
 
             if (pharmacy.PendingProfile != null)
             {
-                _context.PharmacyProfille.Remove(pharmacy.PendingProfile);
+                var old = pharmacy.PendingProfile;
+                pharmacy.PendingProfile = null;
+                pharmacy.PendingProfileId = null;
+                _context.Pharmacy.Update(pharmacy);
+                await _context.SaveChangesAsync();
+
+                _context.PharmacyProfille.Remove(old);
+                await _context.SaveChangesAsync();
             }
 
+            await _context.PharmacyProfille.AddAsync(newProfile); 
+            await _context.SaveChangesAsync();
+
             pharmacy.PendingProfile = newProfile;
+            pharmacy.PendingProfileId = newProfile.Id;
+            _context.Pharmacy.Update(pharmacy);
+            await _context.SaveChangesAsync();
+        }
+        public async Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO fields)
+        {
+            var pharmacy = await _context.Pharmacy
+                .Include(p => p.ActiveProfile)
+                .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
+
+            if (pharmacy?.ActiveProfile == null) return;
+
+            pharmacy.ActiveProfile.HaveDelivary = fields.deliveryAvailability;
+            pharmacy.ActiveProfile.Is24Hours = fields.is24Hours;
+            pharmacy.ActiveProfile.OpeningTime = fields.openingTime;
+            pharmacy.ActiveProfile.ClosingTime = fields.closingTime;
+
             await _context.SaveChangesAsync();
         }
         public async Task<bool> ActivateProfileAsync(string userId)

@@ -41,18 +41,28 @@ namespace Med_Map.Controllers
                 // Fetch customer details 
                 var customer = await customerRepository.GetByIdAsync(userId);
                 if (customer == null)
-                    return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
+                {
+                    // Map customer details to DTO
+                    var Data = new UserDetailsDTO
+                    {
+                        id = userId,
+                        role = role,
+                        userName = user.UserName ?? "",
+                        email = user.Email ?? "",
+                    };
+                    return SuccessResponse(Data, "User retrieved successfully", SuccessCodes.DataRetrieved);
+                }
                 // Map customer details to DTO
                 var data = new CustomerDetailsDTO
                 {
                     id = customer.ApplicationUserId,
                     role = role,
-                    userName = user.UserName ?? "",
-                    email = user.Email ?? "",
-                    phoneNumber = user.PhoneNumber ?? "",
-                    address = customer.address,
+                    userName = user.UserName ,
+                    email = user.Email ,
+                    phoneNumber = user.PhoneNumber,
+                    address = customer.address ,
                     birthDate = customer.BirthDate,
-                    medicalHistory = customer.MedicalHistory
+                    medicalHistory = customer.MedicalHistory 
                 };
                 return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
             }
@@ -60,25 +70,33 @@ namespace Med_Map.Controllers
             else if (role == "Pharmacy")
             {
                 var phar = await pharmacyRepository.GetByIdAsync(userId);
-                if (phar.ActiveProfile == null)
-                    return ErrorResponse("Active pharmacy profile not found", ErrorCodes.UserNotFound);
+                if (phar == null || phar.ActiveProfile == null)
+                {
+                    var Data = new UserDetailsDTO
+                    {
+                        id = userId,
+                        role = role,
+                        userName = user.UserName ?? "",
+                        email = user.Email ?? "",
+                    };
+                    return SuccessResponse(Data, "User retrieved successfully", SuccessCodes.DataRetrieved);
+                }
                 // Extract document URLs
                 List<string> LicenseImageUrls = new List<string>();
                 List<string> NationalIdUrls = new List<string>();
                 foreach (var doc in phar.ActiveProfile.Documents)
                 {
                     if (doc.Type == DocumentType.PharmacyLicense)
-                    {
                         LicenseImageUrls.Add(doc.FileUrl);
-                    }
-                    NationalIdUrls.Add(doc.FileUrl);
+                    else if (doc.Type == DocumentType.NationalId)
+                        NationalIdUrls.Add(doc.FileUrl);
                 }
                 // Map pharmacy details to DTO
                 var data = new PharmacyDetailsDTO
                 {
                     role = role,
                     id = Guid.Parse(phar.ApplicationUserId),
-                    doctorName = user.UserName??"",
+                    userName = user.UserName??"",
                     email = user.Email ?? "",
                     doctorPhoneNumber = user.PhoneNumber??"",
                     pharmacyName = phar.ActiveProfile.PharmacyName,
@@ -93,7 +111,7 @@ namespace Med_Map.Controllers
                     licenseImageUrls = LicenseImageUrls,
                     nationalIdUrls = NationalIdUrls
                 };
-                return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
+                return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
             }
             // Handle invalid role
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);

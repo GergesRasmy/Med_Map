@@ -16,7 +16,7 @@ namespace Med_Map.Repositories.PharmacyRepos
         public async Task<PharmacyInventory?> GetPharmacyMedicineAsync(string pharmacyId, Guid medicineId)
         {
             return await _context.PharmacyInventory
-                .FirstOrDefaultAsync(pm => pm.PharmacyId == pharmacyId && pm.MedicineId == medicineId);
+                .FirstOrDefaultAsync(pm => pm.PharmacyProfileId == Guid.Parse(pharmacyId) && pm.MedicineId == medicineId);
         }
         public async Task AddMedicineAsync(PharmacyInventory medicine)
         {
@@ -27,7 +27,7 @@ namespace Med_Map.Repositories.PharmacyRepos
         {
             // 1. Find the exact record
             var inventoryItem = await _context.PharmacyInventory
-                .FirstOrDefaultAsync(pi => pi.PharmacyId == pharmacyId && pi.MedicineId == medicineId);
+                .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == Guid.Parse(pharmacyId) && pi.MedicineId == medicineId);
 
             if (inventoryItem == null)
                 return false;

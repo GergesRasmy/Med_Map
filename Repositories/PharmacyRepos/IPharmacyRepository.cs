@@ -3,6 +3,7 @@
     public interface IPharmacyRepository
     {
         Task SaveToPendingAsync(string userId, PharmacyProfile profile);
+        Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO fields);
         Task<bool> ActivateProfileAsync(string userId);
         Task<Pharmacy?> GetByIdAsync(string id);
         Task<List<Pharmacy>> GetByNameAsync(string name);

@@ -40,6 +40,10 @@ namespace Med_Map.Controllers
         [HttpPost("register")]              //api/account/register
         public async Task<IActionResult> Register([FromBody] RegisterDTO model)
         {
+            if (await userManager.Users.AnyAsync(u => u.NormalizedEmail == model.email.ToUpper()))
+                return ErrorResponse("Email already in use.", ErrorCodes.ValidationError);
+            if (await userManager.Users.AnyAsync(u => u.NormalizedUserName == model.userName.ToUpper()))
+                return ErrorResponse("user Name already in use.", ErrorCodes.ValidationError);
             var user = new ApplicationUser
             {
                 Id = Guid.NewGuid().ToString(),
@@ -48,6 +52,8 @@ namespace Med_Map.Controllers
                 EmailConfirmed = false
             };
             var result = await userManager.CreateAsync(user, model.password);
+            if (!result.Succeeded)
+                return ErrorResponse("user creation failed", ErrorCodes.ProfileCreationFailed);
             try
             {
                 if (model.role == "Customer" || model.role == "Pharmacy")

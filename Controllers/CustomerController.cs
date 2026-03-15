@@ -30,8 +30,6 @@ namespace Med_Map.Controllers
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found",ErrorCodes.UserNotFound);
-            var existing = await customerRepository.GetByIdAsync(userId);
-            if (existing != null) return ErrorResponse("Profile already initialized.", ErrorCodes.ValidationError);
 
             if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
                 return ErrorResponse("Phone number is already in use.", ErrorCodes.PhoneAlreadyInUse);

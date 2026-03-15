@@ -47,7 +47,7 @@ namespace Med_Map.Controllers
             var newOrder = new Orders
             {
                 CustomerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                PharmacyId = orderDTO.pharmacyId,
+                PharmacyProfileId = Guid.Parse(orderDTO.pharmacyId),
                 DeliveryAddress = location,
                 PaymentType = paymentType,
                 Status = StatusList.Pending,
