@@ -11,7 +11,8 @@ namespace Med_Map.Models.ordersANDmedicine
         Pending,
         Preparing,
         Delivered,
-        Cancelled
+        Cancelled,
+        Confirmed
     }
     public enum PaymentOptions
     {

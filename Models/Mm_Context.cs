@@ -25,6 +25,9 @@ namespace Med_Map.Models
         public DbSet<WithdrawalRequest> WithdrawalRequest { get; set; }
         public DbSet<OtpCode> OtpCodes { get; set; }
         public DbSet<UserSession> UserSession { get; set; }
+        public DbSet<Payment> Payment { get; set; }
+        public DbSet<PaymentLog> PaymentLog { get; set; }
+
         #endregion
         #region constructor
         public Mm_Context(): base()
@@ -51,7 +54,7 @@ namespace Med_Map.Models
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.SessionId).IsUnique();
                 entity.Property(e => e.Code).IsRequired().HasMaxLength(6);
-                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.NoAction);
             });
 
             // 3. Session Configuration
@@ -59,7 +62,7 @@ namespace Med_Map.Models
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.JwtId).IsUnique();
-                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.NoAction);
             });
 
             // 4. Customer Configuration

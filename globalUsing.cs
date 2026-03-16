@@ -8,6 +8,7 @@ global using Med_Map.Models.AI;
 global using Med_Map.Models.customer;
 global using Med_Map.Models.ordersANDmedicine;
 global using Med_Map.Models.pharmacy;
+global using Med_Map.Models.Payments;
 global using Med_Map.Repositories;
 global using Med_Map.Repositories.Account;
 global using Med_Map.Repositories.CustomerRepos;

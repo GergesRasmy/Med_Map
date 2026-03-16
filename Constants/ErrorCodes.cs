@@ -35,5 +35,8 @@
         public const string DuplicateEntry = "duplicate_entry";
         public const string DataBaseError = "database_error";
         public const string InsufficientStock = "insufficient_stock";
+
+        //payments
+        public const string PaymentFailed = "payment_not_initiated";
     }
 }
