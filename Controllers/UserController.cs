@@ -36,10 +36,10 @@ namespace Med_Map.Controllers
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
             // Fetch and return customer details
-            if (role == "Customer")
+            if (role == RoleConstants.Names.Customer)
             {
                 // Fetch customer details 
-                var customer = await customerRepository.GetByIdAsync(userId);
+                var customer = await customerRepository.GetByIdAsync(userId,asNoTracking:true);
                 if (customer == null)
                 {
                     // Map customer details to DTO
@@ -67,7 +67,7 @@ namespace Med_Map.Controllers
                 return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
             }
             // Fetch and return pharmacy details
-            else if (role == "Pharmacy")
+            else if (role == RoleConstants.Names.Pharmacy)
             {
                 var phar = await pharmacyRepository.GetByIdAsync(userId);
                 if (phar == null || phar.ActiveProfile == null)

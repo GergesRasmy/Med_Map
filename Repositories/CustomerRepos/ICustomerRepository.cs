@@ -3,7 +3,7 @@
     public interface ICustomerRepository
     {
         Task InsertAsync(Customer customer);
-        Task<Customer?> GetByIdAsync(string id);
+        Task<Customer?> GetByIdAsync(string id, bool asNoTracking);
         Task SaveChangesAsync();
 
     }

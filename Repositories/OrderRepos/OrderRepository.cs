@@ -17,7 +17,7 @@
 
         public async Task<List<Orders>?> GetAllOrdersAsync(string id,string role)
         {
-            IQueryable<Orders> query = _context.Orders.Include(o => o.OrderItems) 
+            IQueryable<Orders> query = _context.Orders.AsNoTracking().Include(o => o.OrderItems) 
                                        .ThenInclude(oi => oi.Medicine);
             if (role == "Pharmacy")
                 return await query.Where(o => o.PharmacyProfileId == Guid.Parse(id)).ToListAsync();
@@ -31,7 +31,7 @@
         {
             if (!Guid.TryParse(orderId, out var guid)) return null;
 
-            return await _context.Orders.Include(o => o.OrderItems)
+            return await _context.Orders.AsNoTracking().Include(o => o.OrderItems)
                                         .ThenInclude(oi => oi.Medicine)
                                         .FirstOrDefaultAsync(o => o.Id == guid);
         }

@@ -8,7 +8,7 @@
         Task<MedicineMaster?> GetByIdAsync(string id);
         Task<List<MedicineMaster>?> GetByTradeNameAsync(string tradeName);
         Task UpdateAsync(MedicineMaster medicine);
-        Task DeleteAsync(string id);
+        Task DeleteAsync(MedicineMaster medicine);
 
         Task SaveChangesAsync();
     }

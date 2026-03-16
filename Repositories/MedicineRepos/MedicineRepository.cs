@@ -23,11 +23,11 @@
         }
         public async Task<List<MedicineMaster>?> GetAllMedicineAsync()
         {
-            return await _context.MedicineMaster.ToListAsync();
+            return await _context.MedicineMaster.AsNoTracking().ToListAsync();
         }
         public async Task<MedicineMaster?> GetByIdAsync(string id)
         {
-            return await _context.MedicineMaster.FirstAsync(c => c.Id == Guid.Parse(id));
+            return await _context.MedicineMaster.FirstOrDefaultAsync(c => c.Id == Guid.Parse(id));
         }
         public async Task<List<MedicineMaster>?> GetByTradeNameAsync(string tradeName)
         {
@@ -35,25 +35,18 @@
                 return new List<MedicineMaster>();
 
             return await _context.MedicineMaster
-                .Where(m => m.TradeName.Contains(tradeName))
+                .Where(m => m.TradeName.Contains(tradeName)).AsNoTracking()
                 .ToListAsync();
         }
         public async Task UpdateAsync(MedicineMaster medicine)
         {
-            if (medicine != null)
-            {
-                _context.MedicineMaster.Update(medicine);
-                await SaveChangesAsync();
-            }
+            _context.MedicineMaster.Update(medicine);
+            await SaveChangesAsync();
         }
-        public async Task DeleteAsync(string id)
+        public async Task DeleteAsync(MedicineMaster medicine)
         {
-            var medicine = await GetByIdAsync(id);
-            if (medicine != null)
-            {
-                _context.MedicineMaster.Remove(medicine);
-                await SaveChangesAsync();
-            }
+            _context.MedicineMaster.Remove(medicine);
+            await SaveChangesAsync();
         }
         public async Task SaveChangesAsync()
         {

@@ -3,9 +3,6 @@
     public class PharmacyInvetoryDTO
     {
         [Required]
-        public string pharmacyProfileId { get; set; }
-
-        [Required]
         public Guid medicineId { get; set; }
 
         [Required]

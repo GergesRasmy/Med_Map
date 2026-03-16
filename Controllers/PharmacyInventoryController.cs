@@ -9,7 +9,7 @@ namespace Med_Map.Controllers
 {
     [Route("api/pharmacyInventory")]
     [ApiController]
-    [Authorize(Roles ="Pharmacy")]
+    [Authorize(Roles =RoleConstants.Names.Pharmacy)]
     public class PharmacyInventoryController : ResponceBaseController
     { 
         #region ctor
@@ -24,28 +24,28 @@ namespace Med_Map.Controllers
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
-        //TODO only Admin Adds medicine
         [HttpPost("insertMedicine")]                //api/pharmacyInventory/insertMedicine
         public async Task<IActionResult> InsertMedicine([FromBody] PharmacyInvetoryDTO model)
         {
-            // Verify the Pharmacy exists
+            // Verify the Pharmacy exists and has an active profile
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
             var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
             if (pharmacy == null) return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+            if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
 
             // Verify the Medicine exists in the Master list
             var medicineMaster = await medicineRepository.GetByIdAsync(model.medicineId.ToString());
             if (medicineMaster == null) return ErrorResponse("Medicine not found in master database", ErrorCodes.DataNotFound);
 
             // Prevent duplicate entry (Check if already in inventory)
-            var existingEntry = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyProfileId, model.medicineId);
-            if (existingEntry != null) return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
+            var existingEntry = await pharmacyInventoryRepository
+                .GetPharmacyMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId);
+            if (existingEntry != null)
+                return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
 
             // Map and Insert then return response
-            if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
-
             var inventoryItem = new PharmacyInventory
             {
                 PharmacyProfileId = pharmacy.ActiveProfile.Id,
@@ -65,12 +65,19 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Failed to add medicine to pharmacy", ErrorCodes.DataBaseError, ex.Message);
             }
         }
-        [Authorize(Roles ="Pharmacy")]
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
         public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
         {
-            //Fetch the existing record
-            var existingItem = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyProfileId, model.medicineId);
+            //verify the inventory belongs to the requesting pharmacy
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy == null) return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+            if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
+
+            var existingItem = await pharmacyInventoryRepository
+                .GetPharmacyMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId);
             if (existingItem == null)
                 return ErrorResponse("Medicine not found in pharmacy inventory", ErrorCodes.DataNotFound);
 
@@ -93,8 +100,14 @@ namespace Med_Map.Controllers
         [HttpDelete("removeMedicine")] // api/pharmacy/removeMedicine
         public async Task<IActionResult> RemoveMedicine([FromBody] InventoryReference model)
         {
-            var success = await pharmacyInventoryRepository.RemoveMedicineAsync(model.PharmacyId, model.MedicineId);
+            //verify the inventory belongs to the requesting pharmacy
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy?.ActiveProfile == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
+            //remove medicine from inventory
+            var success = await pharmacyInventoryRepository.RemoveMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.MedicineId);
             if (!success)
                 return ErrorResponse("Medicine not found.", ErrorCodes.DataNotFound);
 

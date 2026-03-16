@@ -31,7 +31,7 @@ namespace Med_Map.Controllers
             this.accountService = accountService;
         }
         #endregion
-        [Authorize(Roles ="Pharmacy")]
+        [Authorize(Roles = RoleConstants.Names.Pharmacy)]
         [HttpPost("register")]              //api/pharmacy/register
         public async Task<IActionResult> registerPharmacy([FromForm] RegisterPharmacyDTO model)
         {
@@ -65,7 +65,7 @@ namespace Med_Map.Controllers
         }
 
         [HttpPost("update")]
-        [Authorize(Roles = "Pharmacy")]
+        [Authorize(Roles = RoleConstants.Names.Pharmacy)]
         public async Task<IActionResult> UpdatePharmacy([FromForm] PharmacyUpdateDTO model)
         {
             //check if user exist

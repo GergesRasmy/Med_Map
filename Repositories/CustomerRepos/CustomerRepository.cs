@@ -15,10 +15,16 @@ namespace Med_Map.Repositories.CustomerRepos
             await _context.Customer.AddAsync(customer);
             await SaveChangesAsync();
         }
-        
-        public async Task<Customer?> GetByIdAsync(string id)
+
+        public async Task<Customer?> GetByIdAsync(string id, bool asNoTracking = false)
         {
-            return await _context.Customer.Include(c => c.User).FirstOrDefaultAsync(c => c.ApplicationUserId == id);
+            var query = _context.Customer.Include(c => c.User)
+                                         .Where(c => c.ApplicationUserId == id);
+
+            if (asNoTracking)
+                query = query.AsNoTracking();
+
+            return await query.FirstOrDefaultAsync();
         }
         public async Task SaveChangesAsync()
         {

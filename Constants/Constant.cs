@@ -12,7 +12,6 @@
             { ".png", "image/png" },{ ".webp", "image/webp" },
             { ".heic", "image/heif" },{ ".heif", "image/heif" },
             { ".tiff", "image/tiff" },{ ".tif", "image/tiff" },
-            { ".svg", "image/svg+xml" },{ ".ico", "image/x-icon" },
             { ".gif", "image/gif" },{ ".bmp", "image/bmp" }
         };
         public const long MaxFileSize = 5 * 1024 * 1024; // 5 MB

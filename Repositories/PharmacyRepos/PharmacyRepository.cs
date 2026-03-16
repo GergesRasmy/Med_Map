@@ -13,34 +13,38 @@ namespace Med_Map.Repositories.PharmacyRepos
         }
         public async Task SaveToPendingAsync(string userId, PharmacyProfile newProfile)
         {
-            var pharmacy = await _context.Pharmacy
-                .Include(p => p.PendingProfile)
-                    .ThenInclude(pp => pp!.Documents)
-                .Include(p => p.PendingProfile)
-                    .ThenInclude(pp => pp!.PhoneNumbers)
-                .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
-
-            if (pharmacy == null) throw new Exception("Pharmacy not found");
-
-            if (pharmacy.PendingProfile != null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var old = pharmacy.PendingProfile;
-                pharmacy.PendingProfile = null;
-                pharmacy.PendingProfileId = null;
-                _context.Pharmacy.Update(pharmacy);
-                await _context.SaveChangesAsync();
+                var pharmacy = await _context.Pharmacy
+                    .Include(p => p.PendingProfile)
+                        .ThenInclude(pp => pp!.Documents)
+                    .Include(p => p.PendingProfile)
+                        .ThenInclude(pp => pp!.PhoneNumbers)
+                    .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
 
-                _context.PharmacyProfille.Remove(old);
+                if (pharmacy == null) throw new Exception("Pharmacy not found");
+
+                if (pharmacy.PendingProfile != null)
+                {
+                    var old = pharmacy.PendingProfile;
+                    pharmacy.PendingProfile = null;
+                    pharmacy.PendingProfileId = null;
+                    _context.PharmacyProfille.Remove(old);
+                }
+
+                await _context.PharmacyProfille.AddAsync(newProfile);
+                pharmacy.PendingProfile = newProfile;
+                pharmacy.PendingProfileId = newProfile.Id;
+
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
-
-            await _context.PharmacyProfille.AddAsync(newProfile); 
-            await _context.SaveChangesAsync();
-
-            pharmacy.PendingProfile = newProfile;
-            pharmacy.PendingProfileId = newProfile.Id;
-            _context.Pharmacy.Update(pharmacy);
-            await _context.SaveChangesAsync();
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw new Exception("Failed to save");
+            }
         }
         public async Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO model)
         {
@@ -80,7 +84,7 @@ namespace Med_Map.Repositories.PharmacyRepos
 
         public async Task<Pharmacy?> GetByIdAsync(string id)
         {
-            return await _context.Pharmacy
+            return await _context.Pharmacy.AsNoTracking()
                                  .Include(p => p.ActiveProfile)
                                      .ThenInclude(ap => ap!.Documents)
                                  .Include(p => p.ActiveProfile)
@@ -90,7 +94,7 @@ namespace Med_Map.Repositories.PharmacyRepos
         public async Task<List<Pharmacy>> GetByNameAsync(string name)
         {
             string normalizedSearch = name.ToUpper();
-            return await _context.Pharmacy
+            return await _context.Pharmacy.AsNoTracking()
                                  .Include(p => p.ActiveProfile)
                                      .ThenInclude(ap => ap!.PhoneNumbers)
                                  .Include(p => p.User)
@@ -106,7 +110,7 @@ namespace Med_Map.Repositories.PharmacyRepos
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
             var myLocation = geometryFactory.CreatePoint(new Coordinate(longitude, latitude));
 
-            return await _context.Pharmacy
+            return await _context.Pharmacy.AsNoTracking()
                 .Include(p => p.ActiveProfile)
                 .Where(p => p.ActiveProfile != null && p.ActiveProfile.Location.Distance(myLocation) * 111320 <= radiusInMeters)
                 .OrderBy(p => p.ActiveProfile!.Location.Distance(myLocation))

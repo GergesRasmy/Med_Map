@@ -9,6 +9,7 @@ namespace Med_Map.Controllers
     [ApiController]//TODO test
     public class PaymentsController : ResponceBaseController
     {
+        #region ctor
         private readonly IPaymentRepository paymentRepository;
         private readonly IOrderRepository orderRepository;
         private readonly IPaymobService paymobService;
@@ -22,6 +23,7 @@ namespace Med_Map.Controllers
             this.paymobService = paymobService;
             this.logger = logger;
         }
+        #endregion
 
         [HttpPost("initiate")]              //api/payments/initiate
         [Authorize]

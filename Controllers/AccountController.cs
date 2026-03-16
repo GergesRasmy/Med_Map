@@ -56,7 +56,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("user creation failed", ErrorCodes.ProfileCreationFailed);
             try
             {
-                if (model.role == "Customer" || model.role == "Pharmacy")
+                if (model.role == RoleConstants.Names.Customer || model.role == RoleConstants.Names.Pharmacy)
                     await userManager.AddToRoleAsync(user, model.role);
                 else return ErrorResponse("Role is Invalid", ErrorCodes.InvalidInput);
             }

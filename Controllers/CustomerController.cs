@@ -25,7 +25,7 @@ namespace Med_Map.Controllers
         }
         #endregion
         [HttpPost("register")]           //api/customer/register
-        [Authorize(Roles = "Customer")]
+        [Authorize(Roles = RoleConstants.Names.Customer)]
         public async Task<IActionResult> RegisterCustomer([FromBody] CustomerRegisterDTO model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -53,7 +53,7 @@ namespace Med_Map.Controllers
             return SuccessResponse(data, "Customer added successfully", SuccessCodes.DataUpdated);
         }
         [HttpPost("update")]           //api/customer/update
-        [Authorize(Roles = "Customer")]
+        [Authorize(Roles = RoleConstants.Names.Customer)]
         public async Task<IActionResult> UpdateCustomer([FromBody] CustomerUpdateDTO model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -62,7 +62,7 @@ namespace Med_Map.Controllers
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
-            var customer = await customerRepository.GetByIdAsync(userId);
+            var customer = await customerRepository.GetByIdAsync(userId,asNoTracking:false);
             if (customer == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
             if (model.userInfo != null)
@@ -87,7 +87,7 @@ namespace Med_Map.Controllers
         public async Task<IActionResult> getCustomerPublicDetails([FromQuery] Guid id)
         {
             // Retrieve customer details by ID
-            var customer = await customerRepository.GetByIdAsync(id.ToString());
+            var customer = await customerRepository.GetByIdAsync(id.ToString(), asNoTracking: true);
             if (customer == null)
                 return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
 

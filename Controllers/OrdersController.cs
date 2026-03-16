@@ -59,6 +59,7 @@ namespace Med_Map.Controllers
 
             //Calculate Total and Add Items
             decimal total = 0;
+            var inventoryCache = new Dictionary<Guid, PharmacyInventory>();
             foreach (var item in orderDTO.items)
             {
                 var medicine = await medicineRepository.GetByIdAsync(item.medicineId.ToString());
@@ -69,22 +70,21 @@ namespace Med_Map.Controllers
                     return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
                 if (inventory.StockQuantity < item.quantity)
                     return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
-
                 newOrder.OrderItems.Add(new OrderItem
                 {
                     MedicineId = item.medicineId,
                     Quantity = item.quantity
                 });
+                inventoryCache[item.medicineId] = inventory;
                 total += item.quantity * medicine.Price;
             }
             newOrder.TotalAmount = total;
             //Save order
             await orderRepository.InsertAsync(newOrder);
-            //reduce inventory
+            //reduce inventory if order succeeded 
             foreach (var item in orderDTO.items)
             {
-                var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
-                inventory!.StockQuantity -= item.quantity;
+                inventoryCache[item.medicineId].StockQuantity -= item.quantity;
             }
             await pharmacyInventoryRepository.SaveChangesAsync();
 
@@ -116,16 +116,17 @@ namespace Med_Map.Controllers
         public async Task<IActionResult> GetOrderById([FromQuery]string id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if(userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var role = User.FindFirstValue(ClaimTypes.Role);
 
             var order = await orderRepository.GetOrderByIdAsync(id);
             if (order == null)
                 return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
 
-            if (role == "Customer" && order.CustomerId != userId)
+            if (role == RoleConstants.Names.Customer && order.CustomerId != userId)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            if (role == "Pharmacy")
+            if (role == RoleConstants.Names.Pharmacy)
             {
                 var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
                 if (pharmacy?.ActiveProfile?.Id != order.PharmacyProfileId)

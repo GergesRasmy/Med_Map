@@ -25,14 +25,14 @@ namespace Med_Map.Repositories.PharmacyRepos
         }
         public async Task<bool> RemoveMedicineAsync(string pharmacyId, Guid medicineId)
         {
-            // 1. Find the exact record
+            // Find the exact record
             var inventoryItem = await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == Guid.Parse(pharmacyId) && pi.MedicineId == medicineId);
 
             if (inventoryItem == null)
                 return false;
 
-            // 2. Remove and save
+            // Remove and save
             _context.PharmacyInventory.Remove(inventoryItem);
             await _context.SaveChangesAsync();
 

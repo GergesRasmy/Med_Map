@@ -23,7 +23,7 @@ namespace Med_Map.Controllers
         }
         #endregion
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.Names.Admin)]
         [HttpPost("add")]               //api/medicine/add
         public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
@@ -78,7 +78,7 @@ namespace Med_Map.Controllers
             var response = MapToDto(medicine);
             return SuccessResponse<MedicineResponseDTO>(response, "Medicine retrieved successfully", SuccessCodes.DataRetrieved);
         }
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.Names.Admin)]
         [HttpPost("update")]            //api/medicine/update
         public async Task<IActionResult> UpdateMedicine([FromForm] UpdateMedicineDTO NewMedicine)
         {
@@ -121,7 +121,7 @@ namespace Med_Map.Controllers
             return SuccessResponse(response, "Medicine updated successfully", SuccessCodes.DataUpdated);
         }
         [HttpDelete("delete")]             // api/medicine/delete?id=
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.Names.Admin)]
         public async Task<IActionResult> DeleteMedicine([FromQuery]string id)
         {
             //Get the existing medicine from the database
@@ -130,7 +130,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Medicine not found", ErrorCodes.DataNotFound);
 
             //Delete the medicine from the database and Return Response
-            await medicineRepository.DeleteAsync(id);
+            await medicineRepository.DeleteAsync(medicine);
             return SuccessResponse(message: "Medicine deleted successfully", code: SuccessCodes.DataDeleted);
         }
         [HttpGet("search")]             // api/medicine/search?query=
