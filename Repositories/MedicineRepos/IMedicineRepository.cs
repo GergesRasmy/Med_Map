@@ -4,7 +4,7 @@
     {
         Task InsertAsync(MedicineMaster medicine);
         Task<List<MedicineMaster>?> GetAllMedicineAsync();
-        Task<bool> ExistsAsync(string tradeName);
+        Task<bool> ExistsAsync(string tradeName, string? excludeId = null);
         Task<MedicineMaster?> GetByIdAsync(string id);
         Task<List<MedicineMaster>?> GetByTradeNameAsync(string tradeName);
         Task UpdateAsync(MedicineMaster medicine);

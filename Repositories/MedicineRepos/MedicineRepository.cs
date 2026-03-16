@@ -16,10 +16,10 @@
                 await SaveChangesAsync();
             }
         }
-        public async Task<bool> ExistsAsync(string tradeName)
+        public async Task<bool> ExistsAsync(string tradeName, string? excludeId = null)
         {
             return await _context.MedicineMaster
-                .AnyAsync(m => m.TradeName.ToLower() == tradeName.ToLower());
+                .AnyAsync(m => m.TradeName == tradeName && (excludeId == null || m.Id.ToString() != excludeId));
         }
         public async Task<List<MedicineMaster>?> GetAllMedicineAsync()
         {

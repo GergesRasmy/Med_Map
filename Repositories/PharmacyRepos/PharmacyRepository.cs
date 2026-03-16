@@ -42,7 +42,7 @@ namespace Med_Map.Repositories.PharmacyRepos
             _context.Pharmacy.Update(pharmacy);
             await _context.SaveChangesAsync();
         }
-        public async Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO fields)
+        public async Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO model)
         {
             var pharmacy = await _context.Pharmacy
                 .Include(p => p.ActiveProfile)
@@ -50,10 +50,14 @@ namespace Med_Map.Repositories.PharmacyRepos
 
             if (pharmacy?.ActiveProfile == null) return;
 
-            pharmacy.ActiveProfile.HaveDelivary = fields.deliveryAvailability;
-            pharmacy.ActiveProfile.Is24Hours = fields.is24Hours;
-            pharmacy.ActiveProfile.OpeningTime = fields.openingTime;
-            pharmacy.ActiveProfile.ClosingTime = fields.closingTime;
+            if (model.deliveryAvailability.HasValue)
+                pharmacy.ActiveProfile.HaveDelivary = model.deliveryAvailability.Value;
+            if (model.is24Hours.HasValue)
+                pharmacy.ActiveProfile.Is24Hours = model.is24Hours.Value;
+            if (model.openingTime.HasValue)
+                pharmacy.ActiveProfile.OpeningTime = model.openingTime.Value;
+            if (model.closingTime.HasValue)
+                pharmacy.ActiveProfile.ClosingTime = model.closingTime.Value;
 
             await _context.SaveChangesAsync();
         }

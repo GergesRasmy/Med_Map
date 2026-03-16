@@ -24,28 +24,31 @@ namespace Med_Map.Controllers
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
+        //TODO only Admin Adds medicine
         [HttpPost("insertMedicine")]                //api/pharmacyInventory/insertMedicine
         public async Task<IActionResult> InsertMedicine([FromBody] PharmacyInvetoryDTO model)
         {
             // Verify the Pharmacy exists
-            var pharmacy = await pharmacyRepository.GetByIdAsync(model.pharmacyId);
-            if (pharmacy == null)
-                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy == null) return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             // Verify the Medicine exists in the Master list
             var medicineMaster = await medicineRepository.GetByIdAsync(model.medicineId.ToString());
-            if (medicineMaster == null)
-                return ErrorResponse("Medicine not found in master database", ErrorCodes.DataNotFound);
+            if (medicineMaster == null) return ErrorResponse("Medicine not found in master database", ErrorCodes.DataNotFound);
 
             // Prevent duplicate entry (Check if already in inventory)
-            var existingEntry = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyId, model.medicineId);
-            if (existingEntry != null)
-                return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
+            var existingEntry = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyProfileId, model.medicineId);
+            if (existingEntry != null) return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
 
             // Map and Insert then return response
+            if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
+
             var inventoryItem = new PharmacyInventory
             {
-                PharmacyProfileId = Guid.Parse(model.pharmacyId),
+                PharmacyProfileId = pharmacy.ActiveProfile.Id,
                 MedicineId = model.medicineId,
                 StockQuantity = model.quantity,
                 ExpiryDate = model.expiryDate,
@@ -62,11 +65,12 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Failed to add medicine to pharmacy", ErrorCodes.DataBaseError, ex.Message);
             }
         }
+        [Authorize(Roles ="Pharmacy")]
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
         public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
         {
             //Fetch the existing record
-            var existingItem = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyId, model.medicineId);
+            var existingItem = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(model.pharmacyProfileId, model.medicineId);
             if (existingItem == null)
                 return ErrorResponse("Medicine not found in pharmacy inventory", ErrorCodes.DataNotFound);
 
@@ -78,7 +82,7 @@ namespace Med_Map.Controllers
             //Save changes
             try
             {
-                await pharmacyRepository.SaveChangesAsync();
+                await pharmacyInventoryRepository.SaveChangesAsync();
                 return SuccessResponse("Inventory updated successfully", SuccessCodes.DataUpdated);
             }
             catch (Exception ex)
@@ -94,7 +98,7 @@ namespace Med_Map.Controllers
             if (!success)
                 return ErrorResponse("Medicine not found.", ErrorCodes.DataNotFound);
 
-            return SuccessResponse("Medicine removed successfully", SuccessCodes.DataUpdated);
+            return SuccessResponse("Medicine removed successfully", SuccessCodes.DataDeleted);
         }
 
     }

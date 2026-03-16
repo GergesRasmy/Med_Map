@@ -98,7 +98,7 @@ namespace Med_Map.Controllers
                     id = Guid.Parse(phar.ApplicationUserId),
                     userName = user.UserName??"",
                     email = user.Email ?? "",
-                    doctorPhoneNumber = user.PhoneNumber??"",
+                    phoneNumber = user.PhoneNumber??"",
                     pharmacyName = phar.ActiveProfile.PharmacyName,
                     pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
                     address = phar.ActiveProfile.address,

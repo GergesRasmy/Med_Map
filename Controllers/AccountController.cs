@@ -18,12 +18,12 @@ namespace Med_Map.Controllers
         private readonly IOtpRepository otpRepository;
         private readonly IOtpService otpService;
         private readonly ISessionRepository sessionRepository;
-        private readonly IFileService fileService;
         private readonly IEmailService emailService;
+        private readonly ILogger<AccountController> logger;
 
         public AccountController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration config
                                             , IOtpRepository otpRepository, IOtpService otpService, ISessionRepository sessionRepository
-                                            , IFileService fileService, IEmailService emailService)
+                                            , IEmailService emailService, ILogger<AccountController> logger)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
@@ -31,8 +31,8 @@ namespace Med_Map.Controllers
             this.otpRepository = otpRepository;
             this.otpService = otpService;
             this.sessionRepository = sessionRepository;
-            this.fileService = fileService;
             this.emailService = emailService;
+            this.logger = logger;
         }
         #endregion
 
@@ -62,8 +62,11 @@ namespace Med_Map.Controllers
             }
             catch (Exception ex)
             {
-                await userManager.DeleteAsync(user);
-                return ErrorResponse("Registration failed during profile setup.", ErrorCodes.ProfileCreationFailed, ex.Message);
+                logger.LogError(ex, "Role assignment failed for user {UserId}", user.Id);
+                var deleteResult = await userManager.DeleteAsync(user);
+                if (!deleteResult.Succeeded)
+                    logger.LogError("Failed to rollback user {UserId} after role assignment failure", user.Id);
+                return ErrorResponse("Registration failed during profile setup.", ErrorCodes.ProfileCreationFailed);
             }
             try
             {
@@ -72,7 +75,8 @@ namespace Med_Map.Controllers
             }
             catch (Exception ex)
             {
-                return ErrorResponse("User created, but notification failed to send.", ErrorCodes.OtpSendFailed, ex.Message);
+                logger.LogError(ex, "OTP send failed for user {UserId}", user.Id);
+                return ErrorResponse("User created but verification email failed to send. Please request a new OTP.", ErrorCodes.OtpSendFailed);
             }
         }
 
@@ -126,7 +130,8 @@ namespace Med_Map.Controllers
             }
             catch (Exception ex)
             {
-                return ErrorResponse("Verification process failed.", ErrorCodes.OtpSendFailed, ex.Message);
+                logger.LogError(ex, "OTP send failed for user {UserId}", user.Id);
+                return ErrorResponse("Verification process failed.", ErrorCodes.OtpSendFailed);
             }
         }
 

@@ -8,7 +8,7 @@
         public string pharmacyName { get; set; }
         public List<string> pharmacyPhones { get; set; }
         public string userName { get; set; }
-        public string doctorPhoneNumber { get; set; }
+        public string phoneNumber { get; set; }
         public string address { get; set; }
         public Point coordinates { get; set; }
         public TimeSpan openingTime { get; set; }

@@ -1,9 +1,11 @@
 ﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using NetTopologySuite;
 using NetTopologySuite.Index.HPRtree;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -16,27 +18,27 @@ namespace Med_Map.Controllers
     {
         #region ctor
         private readonly UserManager<ApplicationUser> userManager;
-        private readonly RoleManager<IdentityRole> roleManager;
         private readonly IOrderRepository orderRepository;
         private readonly IMedicineRepository medicineRepository;
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly IPharmacyInventoryRepository pharmacyInventoryRepository;
 
-        public OrdersController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOrderRepository orderRepository, IMedicineRepository medicineRepository
+        public OrdersController(UserManager<ApplicationUser> userManager, IOrderRepository orderRepository, IMedicineRepository medicineRepository
                                 ,IPharmacyRepository pharmacyRepository,IPharmacyInventoryRepository pharmacyInventoryRepository)
         {
             this.userManager = userManager;
-            this.roleManager = roleManager;
             this.orderRepository = orderRepository;
             this.medicineRepository = medicineRepository;
             this.pharmacyRepository = pharmacyRepository;
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
-       
+        [Authorize]
         [HttpPost("place")]                     //api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             // Validate Payment Option
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);
@@ -46,7 +48,7 @@ namespace Med_Map.Controllers
             var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.longitude, orderDTO.latitude));
             var newOrder = new Orders
             {
-                CustomerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                CustomerId = userId,
                 PharmacyProfileId = Guid.Parse(orderDTO.pharmacyId),
                 DeliveryAddress = location,
                 PaymentType = paymentType,
@@ -62,6 +64,12 @@ namespace Med_Map.Controllers
                 var medicine = await medicineRepository.GetByIdAsync(item.medicineId.ToString());
                 if (medicine == null) return ErrorResponse("Medicine not found", ErrorCodes.DataNotFound);
 
+                var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
+                if (inventory == null)
+                    return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
+                if (inventory.StockQuantity < item.quantity)
+                    return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
+
                 newOrder.OrderItems.Add(new OrderItem
                 {
                     MedicineId = item.medicineId,
@@ -70,24 +78,20 @@ namespace Med_Map.Controllers
                 total += item.quantity * medicine.Price;
             }
             newOrder.TotalAmount = total;
-
-            //Reduce the amount ordered from pharmacy inventory
+            //Save order
+            await orderRepository.InsertAsync(newOrder);
+            //reduce inventory
             foreach (var item in orderDTO.items)
             {
                 var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
-                if (inventory == null)
-                    return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
-                if (inventory.StockQuantity < item.quantity)
-                    return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
-                inventory.StockQuantity -= item.quantity;     
+                inventory!.StockQuantity -= item.quantity;
             }
+            await pharmacyInventoryRepository.SaveChangesAsync();
 
-            //Save to Database and Return Response
-            await orderRepository.InsertAsync(newOrder);
             var response = MapOrderToResponseDTO(newOrder);
-
             return SuccessResponse(response, "Order created successfully", SuccessCodes.DataCreated);
         }
+        [Authorize]
         [HttpGet("myOrders")]                   //api/order/myOrders
         public async Task<IActionResult> getMyOrders()
         {
@@ -107,18 +111,31 @@ namespace Med_Map.Controllers
             var response = orders.Select(MapOrderToResponseDTO).ToList();
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
+        [Authorize]
         [HttpGet]                               // api/order?id=
         public async Task<IActionResult> GetOrderById([FromQuery]string id)
         {
-            //get the order from the database
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
             var order = await orderRepository.GetOrderByIdAsync(id);
             if (order == null)
                 return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
 
+            if (role == "Customer" && order.CustomerId != userId)
+                return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            if (role == "Pharmacy")
+            {
+                var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+                if (pharmacy?.ActiveProfile?.Id != order.PharmacyProfileId)
+                    return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            }
             //Map to DTO and return response
             var response = MapOrderToResponseDTO(order);
             return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
         }
+        [Authorize]
         [HttpPost("cancel/{orderId}")]          // api/order/cancel/{orderId}
         public async Task<IActionResult> CancelOrder(string orderId)
         {
@@ -141,7 +158,7 @@ namespace Med_Map.Controllers
                 CreatedAt = order.CreatedAt,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
-                Items = order.OrderItems.Select(oi => new OrderItemResponseDTO
+                Items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => new OrderItemResponseDTO
                 {
                     MedicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
                     Quantity = oi.Quantity,

@@ -36,6 +36,7 @@ public partial class Program
         builder.Services.AddScoped<IEmailService, EmailService>();
         builder.Services.AddScoped<IFileService, FileService>();
         builder.Services.AddScoped<IOtpService, OtpService>();
+        builder.Services.AddScoped<IAccountService, AccountService>();
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {

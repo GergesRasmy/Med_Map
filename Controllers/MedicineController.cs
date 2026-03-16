@@ -23,8 +23,8 @@ namespace Med_Map.Controllers
         }
         #endregion
 
-        [HttpPost("add")]               //api/medicine/add
         [Authorize(Roles = "Admin")]
+        [HttpPost("add")]               //api/medicine/add
         public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
             if (await medicineRepository.ExistsAsync(medicine.tradeName))
@@ -78,13 +78,13 @@ namespace Med_Map.Controllers
             var response = MapToDto(medicine);
             return SuccessResponse<MedicineResponseDTO>(response, "Medicine retrieved successfully", SuccessCodes.DataRetrieved);
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost("update")]            //api/medicine/update
         public async Task<IActionResult> UpdateMedicine([FromForm] UpdateMedicineDTO NewMedicine)
         {
             //Check if the new trade name is already taken by another medicine (excluding the current medicine)
-            var isNameTaken = await medicineRepository.ExistsAsync(NewMedicine.tradeName);
-            if (isNameTaken)
-                return ErrorResponse("This trade name is already assigned to another medicine.", ErrorCodes.ValidationError);
+            var isNameTaken = await medicineRepository.ExistsAsync(NewMedicine.tradeName, excludeId: NewMedicine.id);
+            if (isNameTaken) return ErrorResponse("This trade name is already assigned to another medicine.", ErrorCodes.ValidationError);
 
             //Get the existing medicine from the database
             var ExistingMedicine = await medicineRepository.GetByIdAsync(NewMedicine.id);
@@ -99,22 +99,28 @@ namespace Med_Map.Controllers
             ExistingMedicine.Manufacturer = NewMedicine.manufacturer;
             if (NewMedicine.image != null)
             {
+                var oldImageUrl = ExistingMedicine.ImageUrl;
+                string imageUrl;
                 try
                 {
-                    string imageUrl = await fileService.SaveFileAsync(NewMedicine.image, "Medicine_Images");
-                    ExistingMedicine.ImageUrl = imageUrl;
+                    imageUrl = await fileService.SaveFileAsync(NewMedicine.image, "Medicine_Images");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    return ErrorResponse("Image didn't save", ErrorCodes.ValidationError, ex.Message);
+                    return ErrorResponse("Image failed to save. Please try again.", ErrorCodes.ValidationError);
                 }
+
+                ExistingMedicine.ImageUrl = imageUrl;
+
+                if (oldImageUrl != null)
+                    await fileService.DeleteFileAsync(oldImageUrl);
             }
             //Save the updated medicine to the database and Return Response
             await medicineRepository.UpdateAsync(ExistingMedicine);
             var response = MapToDto(ExistingMedicine);
             return SuccessResponse(response, "Medicine updated successfully", SuccessCodes.DataUpdated);
         }
-        [HttpGet("delete")]             // api/medicine/delete?id=
+        [HttpDelete("delete")]             // api/medicine/delete?id=
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteMedicine([FromQuery]string id)
         {

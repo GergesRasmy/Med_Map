@@ -1,11 +1,11 @@
 ﻿namespace Med_Map.DTO.CustomerDTOs
 {
-    public class CustomerUpdateDTO
+    public class CustomerRegisterDTO
     {
-        public DateOnly? birthDate { get; set; }
+        [Required]
+        public DateOnly birthDate { get; set; }
         public string? medicalHistory { get; set; }
         public string? address { get; set; }
         public UpdateUserInfoDTO? userInfo { get; set; }
-
     }
 }

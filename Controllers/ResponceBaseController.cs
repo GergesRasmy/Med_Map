@@ -1,6 +1,4 @@
-﻿using Med_Map.DTO;
-using Med_Map.DTO.ResponseDTOs;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -11,7 +9,7 @@ namespace Med_Map.Controllers
     public class ResponceBaseController : ControllerBase
     {
         [NonAction]
-        protected IActionResult SuccessResponse<T>(T data, string message = "Success", string code = null)
+        protected IActionResult SuccessResponse<T>(T data, string message = "Success", string code = SuccessCodes.OK)
             => Ok(new SuccessResponseDTO<T> { success = true, message = message, code = code, data = data });
 
         [NonAction]
@@ -21,7 +19,7 @@ namespace Med_Map.Controllers
         }
 
         [NonAction]
-        protected IActionResult ErrorResponse(string message, string code = "Failed", object errors = null)
+        protected IActionResult ErrorResponse(string message, string code = ErrorCodes.InternalServerError, object? errors = null)
             => BadRequest(new ErrorResponseDTO<object> { success = false, message = message, code = code, error = errors });
     }
 }

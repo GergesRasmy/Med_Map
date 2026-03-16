@@ -2,6 +2,8 @@
 {
     public class SuccessCodes
     {
+        //basic
+        public const string OK = "code_excuted_successfully";
         // Authentication & Registration
         public const string LoginSuccess = "login_success";
         public const string RegistrationPending = "registration_pending_otp"; 

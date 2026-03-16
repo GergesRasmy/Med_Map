@@ -11,29 +11,33 @@ namespace Med_Map.Controllers
     public class CustomerController : ResponceBaseController
     {
         #region ctor
-        private readonly ICustomerRepository customerRepository;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly ICustomerRepository customerRepository;
         private readonly IOtpService otpService;
+        private readonly IAccountService accountService;
 
-        public CustomerController(ICustomerRepository customerRepository, UserManager<ApplicationUser> userManager,IOtpService otpService)
+        public CustomerController(UserManager<ApplicationUser> userManager, ICustomerRepository customerRepository, IOtpService otpService,IAccountService accountService)
         {
-            this.customerRepository = customerRepository;
             this.userManager = userManager;
+            this.customerRepository = customerRepository;
             this.otpService = otpService;
+            this.accountService = accountService;
         }
         #endregion
         [HttpPost("register")]           //api/customer/register
         [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> RegisterCustomer([FromBody] CustomerUpdateDTO model)
+        public async Task<IActionResult> RegisterCustomer([FromBody] CustomerRegisterDTO model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found",ErrorCodes.UserNotFound);
 
-            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber))
-                return ErrorResponse("Phone number is already in use.", ErrorCodes.PhoneAlreadyInUse);
-            else user.PhoneNumber = model.phoneNumber;
+            if (model.userInfo != null)
+            {
+                var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
+                if (!success) return ErrorResponse(errorMessage!, errorCode!);
+            }
 
             var customer = new Customer
             {
@@ -48,6 +52,36 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(data, "Customer added successfully", SuccessCodes.DataUpdated);
         }
+        [HttpPost("update")]           //api/customer/update
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> UpdateCustomer([FromBody] CustomerUpdateDTO model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            var customer = await customerRepository.GetByIdAsync(userId);
+            if (customer == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            if (model.userInfo != null)
+            {
+                var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
+                if (!success) return ErrorResponse(errorMessage!, errorCode!);
+            }
+
+            if (model.address != null) customer.address = model.address;
+            if (model.birthDate != null) customer.BirthDate = model.birthDate.Value;
+            if (model.medicalHistory != null) customer.MedicalHistory = model.medicalHistory;
+
+            await customerRepository.SaveChangesAsync();
+
+            // Use the helper to create the response object
+            var data = MapToCustomerDetails(customer);
+
+            return SuccessResponse(data, "Customer updated successfully", SuccessCodes.DataUpdated);
+        }
 
         [HttpGet("customerPublicGet")]           //api/customer/customerPublicGet
         public async Task<IActionResult> getCustomerPublicDetails([FromQuery] Guid id)
@@ -57,45 +91,17 @@ namespace Med_Map.Controllers
             if (customer == null)
                 return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
 
-
             var user = await userManager.FindByIdAsync(customer.ApplicationUserId.ToString());
-            var data = new PublicCustomerDetailsDTO { userName = user.UserName ,role ="Customer",id = customer.ApplicationUserId};
+            if (user == null)
+                return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
-            return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
-        }
-        [HttpPost("update")]           //api/customer/update
-        [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> UpdateCustomer([FromBody] CustomerUpdateDTO model)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
-           
-            var customer = await customerRepository.GetByIdAsync(userId);
-            if (customer == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
-            
-            if (!string.Equals(model.email, customer.User.Email, StringComparison.OrdinalIgnoreCase))
+            var data = new PublicCustomerDetailsDTO 
             {
-                if (await userManager.Users.AnyAsync(u => u.Email == model.email))
-                    return ErrorResponse("Email already in use.", ErrorCodes.ValidationError);
-                customer.User.Email = model.email;
-                customer.User.EmailConfirmed = false;
-            }
-            if (await userManager.Users.AnyAsync(u => u.PhoneNumber == model.phoneNumber) && model.phoneNumber != null)
-                return ErrorResponse("Phone number is already in use.", ErrorCodes.PhoneAlreadyInUse);
-            
-            customer.address = model.address;
-            customer.BirthDate = model.birthDate;
-            customer.MedicalHistory = model.medicalHistory;
-            customer.User.UserName = model.userName;
-            customer.User.PhoneNumber = model.phoneNumber;
-
-
-            await customerRepository.SaveChangesAsync();
-
-            // Use the helper to create the response object
-            var data = MapToCustomerDetails(customer);
-
-            return SuccessResponse(data, "Customer updated successfully", SuccessCodes.DataUpdated);
+                userName = user.UserName ,
+                role ="Customer",
+                id = customer.ApplicationUserId
+            };
+            return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
         private CustomerDetailsDTO MapToCustomerDetails(Customer customer)
         {
