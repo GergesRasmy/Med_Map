@@ -21,26 +21,52 @@
             return await _context.MedicineMaster
                 .AnyAsync(m => m.TradeName == tradeName && (excludeId == null || m.Id.ToString() != excludeId));
         }
-        public async Task<List<MedicineMaster>?> GetAllMedicineAsync()
+        public async Task<(List<MedicineMaster> items, int totalCount)> GetAllMedicineAsync(int page, int pageSize = 10)
         {
-            return await _context.MedicineMaster.AsNoTracking().ToListAsync();
+            var query = _context.MedicineMaster.AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
         public async Task<MedicineMaster?> GetByIdAsync(string id)
         {
             return await _context.MedicineMaster.FirstOrDefaultAsync(c => c.Id == Guid.Parse(id));
         }
-        public async Task<List<MedicineMaster>?> GetByTradeNameAsync(string tradeName)
+        public async Task<(List<MedicineMaster>? items, int totalCount)> GetByTradeNameAsync(string tradeName, int page, int pageSize = 10)
         {
             if (string.IsNullOrWhiteSpace(tradeName))
-                return new List<MedicineMaster>();
+                return (new List<MedicineMaster>(), 0);
 
-            return await _context.MedicineMaster
-                .Where(m => m.TradeName.Contains(tradeName)).AsNoTracking()
+            var query = _context.MedicineMaster
+                .Where(m => m.TradeName.Contains(tradeName))
+                .AsNoTracking();
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
-        public async Task UpdateAsync(MedicineMaster medicine)
+        public async Task UpdateAsync(MedicineMaster existing, UpdateMedicineDTO dto)
         {
-            _context.MedicineMaster.Update(medicine);
+            if (dto.tradeName != null)
+                existing.TradeName = dto.tradeName;
+            if (dto.genericName != null)
+                existing.GenericName = dto.genericName;
+            if (dto.price != null)
+                existing.Price = dto.price.Value;
+            if (dto.isRestricted != null)
+                existing.IsRestricted = dto.isRestricted.Value;
+            if (dto.manufacturer != null)
+                existing.Manufacturer = dto.manufacturer;
+
             await SaveChangesAsync();
         }
         public async Task DeleteAsync(MedicineMaster medicine)

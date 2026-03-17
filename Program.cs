@@ -74,6 +74,7 @@ public partial class Program
             app.MapOpenApi();
             app.MapScalarApiReference();
         }
+        app.UseHttpsRedirection();
         app.UseStaticFiles();
         app.UseRouting();
         app.UseAuthentication();

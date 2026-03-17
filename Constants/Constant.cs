@@ -4,6 +4,7 @@
     {
         public const double tokenExpirationTime = 1000000;// in Hours, Approx 114 years, effectively making tokens non-expiring for testing purposes. Adjust as needed for production.
         public const double OtpExpirationTime = 5; // in Minutes
+        public const int PageSize = 10;
 
         // file upload settings
         public static readonly Dictionary<string, string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)

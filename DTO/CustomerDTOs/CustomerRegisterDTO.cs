@@ -7,5 +7,6 @@
         public string? medicalHistory { get; set; }
         public string? address { get; set; }
         public UpdateUserInfoDTO? userInfo { get; set; }
+       
     }
 }

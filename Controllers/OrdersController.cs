@@ -39,6 +39,9 @@ namespace Med_Map.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            var user = await userManager.FindByIdAsync(userId);
+            if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration); 
+
             // Validate Payment Option
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);
@@ -49,7 +52,7 @@ namespace Med_Map.Controllers
             var newOrder = new Orders
             {
                 CustomerId = userId,
-                PharmacyProfileId = Guid.Parse(orderDTO.pharmacyId),
+                PharmacyProfileId = orderDTO.pharmacyId,
                 DeliveryAddress = location,
                 PaymentType = paymentType,
                 Status = StatusList.Pending,
@@ -65,7 +68,7 @@ namespace Med_Map.Controllers
                 var medicine = await medicineRepository.GetByIdAsync(item.medicineId.ToString());
                 if (medicine == null) return ErrorResponse("Medicine not found", ErrorCodes.DataNotFound);
 
-                var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
+                var inventory = await pharmacyInventoryRepository.GetPharmacyMedicineAsync(orderDTO.pharmacyId.ToString(), item.medicineId);
                 if (inventory == null)
                     return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
                 if (inventory.StockQuantity < item.quantity)
@@ -98,6 +101,10 @@ namespace Med_Map.Controllers
             // Extract user ID and role from claims
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
+
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
             if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
 
@@ -117,6 +124,9 @@ namespace Med_Map.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if(userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            var user = await userManager.FindByIdAsync(userId);
+            if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
+
             var role = User.FindFirstValue(ClaimTypes.Role);
 
             var order = await orderRepository.GetOrderByIdAsync(id);
@@ -137,11 +147,13 @@ namespace Med_Map.Controllers
             return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [Authorize]
-        [HttpPost("cancel/{orderId}")]          // api/order/cancel/{orderId}
+        [HttpPatch("cancel/{orderId}")]          // api/order/cancel/{orderId}
         public async Task<IActionResult> CancelOrder(string orderId)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return ErrorResponse("Unauthorized access", ErrorCodes.Unauthorized);
+            var user = await userManager.FindByIdAsync(userId);
+            if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
             var success = await orderRepository.CancelOrder(orderId, userId);
 
@@ -167,6 +179,8 @@ namespace Med_Map.Controllers
                 }).ToList()
             };
         }
+
+
     }
 }
 

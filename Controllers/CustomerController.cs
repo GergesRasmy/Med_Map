@@ -32,13 +32,12 @@ namespace Med_Map.Controllers
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found",ErrorCodes.UserNotFound);
+            if (user.IsActive == true) return ErrorResponse("User Already Registered", ErrorCodes.InvalidAction);
+            if (model.userInfo.phoneNumber == null) return ErrorResponse("Phone number is required", ErrorCodes.ValidationError);
 
-            if (model.userInfo != null)
-            {
-                var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
-                if (!success) return ErrorResponse(errorMessage!, errorCode!);
-            }
-
+            var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
+            if (!success) return ErrorResponse(errorMessage!, errorCode!);
+            
             var customer = new Customer
             {
                 ApplicationUserId = userId,
@@ -47,12 +46,14 @@ namespace Med_Map.Controllers
                 BirthDate = model.birthDate,
                 MedicalHistory = model.medicalHistory
             };
+
             await customerRepository.InsertAsync(customer);
             var data = MapToCustomerDetails(customer);
 
             return SuccessResponse(data, "Customer added successfully", SuccessCodes.DataUpdated);
         }
-        [HttpPost("update")]           //api/customer/update
+       
+        [HttpPatch("update")]           //api/customer/update
         [Authorize(Roles = RoleConstants.Names.Customer)]
         public async Task<IActionResult> UpdateCustomer([FromBody] CustomerUpdateDTO model)
         {
@@ -65,11 +66,8 @@ namespace Med_Map.Controllers
             var customer = await customerRepository.GetByIdAsync(userId,asNoTracking:false);
             if (customer == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
-            if (model.userInfo != null)
-            {
-                var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
-                if (!success) return ErrorResponse(errorMessage!, errorCode!);
-            }
+            var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
+            if (!success) return ErrorResponse(errorMessage!, errorCode!);            
 
             if (model.address != null) customer.address = model.address;
             if (model.birthDate != null) customer.BirthDate = model.birthDate.Value;
@@ -84,22 +82,23 @@ namespace Med_Map.Controllers
         }
 
         [HttpGet("customerPublicGet")]           //api/customer/customerPublicGet
-        public async Task<IActionResult> getCustomerPublicDetails([FromQuery] Guid id)
+        public async Task<IActionResult> getCustomerPublicDetails([FromQuery] string id)
         {
             // Retrieve customer details by ID
-            var customer = await customerRepository.GetByIdAsync(id.ToString(), asNoTracking: true);
+            var user = await userManager.FindByIdAsync(id);
+            if (user == null||user.IsActive==false)
+                return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+
+            var customer = await customerRepository.GetByIdAsync(id, asNoTracking: true);
             if (customer == null)
                 return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
-
-            var user = await userManager.FindByIdAsync(customer.ApplicationUserId.ToString());
-            if (user == null)
-                return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
             var data = new PublicCustomerDetailsDTO 
             {
                 userName = user.UserName ,
                 role ="Customer",
-                id = customer.ApplicationUserId
+                id = id
             };
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }

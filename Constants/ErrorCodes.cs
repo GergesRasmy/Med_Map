@@ -17,6 +17,7 @@
         public const string ActivitionFailed = "activition_failed";
         public const string WrongFormat = "wrong_Format";
         public const string RegistrationFailed = "registration_failed";
+        public const string CompleteRegistration = "registration_incomplete";
 
 
         // OTP Logic

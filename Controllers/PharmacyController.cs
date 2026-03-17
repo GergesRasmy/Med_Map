@@ -54,6 +54,7 @@ namespace Med_Map.Controllers
             try
             {
                 await pharmacyRepository.SaveToPendingAsync(userId, result.Profile!);
+                user.IsActive = true;
                 return SuccessResponse("Registration submitted successfully.", SuccessCodes.RegistrationPending);
             }
             catch (Exception ex)

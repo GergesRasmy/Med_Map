@@ -22,7 +22,8 @@
 
             if (model.email != null)
             {
-                if (await _userManager.FindByEmailAsync(model.email) != null)
+                var existingEmail = await _userManager.FindByEmailAsync(model.email);
+                if (existingEmail != null && existingEmail.Id != user.Id)
                     return (false, "Email is already in use.", ErrorCodes.EmailAlreadyInUse);
                 user.Email = model.email;
                 user.EmailConfirmed = false;
@@ -30,22 +31,23 @@
 
             if (model.userName != null)
             {
-                if (await _userManager.FindByNameAsync(model.userName) != null)
+                var existingName = await _userManager.FindByNameAsync(model.userName);
+                if (existingName != null && existingName.Id != user.Id)
                     return (false, "Username is already in use.", ErrorCodes.DuplicateEntry);
                 user.UserName = model.userName;
-                user.NormalizedUserName = model.userName.ToUpper();
             }
 
-            if (model.newPassword != null)
-            {
-                if (model.currentPassword == null)
-                    return (false, "Current password is required.", ErrorCodes.ValidationError);
+            //if (model.newPassword != null)
+            //{
+            //    if (model.currentPassword == null)
+            //        return (false, "Current password is required.", ErrorCodes.ValidationError);
 
-                var passwordResult = await _userManager.ChangePasswordAsync(user, model.currentPassword, model.newPassword);
-                if (!passwordResult.Succeeded)
-                    return (false, passwordResult.Errors.First().Description, ErrorCodes.ValidationError);
-            }
+            //    var passwordResult = await _userManager.ChangePasswordAsync(user, model.currentPassword, model.newPassword);
+            //    if (!passwordResult.Succeeded)
+            //        return (false, passwordResult.Errors.First().Description, ErrorCodes.ValidationError);
+            //}
 
+            user.IsActive = true;
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
                 return (false, "Failed to update user info.", ErrorCodes.InternalServerError);
