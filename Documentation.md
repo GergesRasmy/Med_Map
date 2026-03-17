@@ -53,3 +53,15 @@ f)api/medicine/search?query= 				✅
 
 # 4-Order 
 	user must register to use this controller
+
+
+
+
+# ToDo non used models
+customer saved locations
+doctor request
+recommendation
+wallet 
+withdrawal request
+
+
