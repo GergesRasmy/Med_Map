@@ -1,4 +1,5 @@
 ﻿using Med_Map.DTO.CustomerDTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NetTopologySuite;
@@ -22,7 +23,11 @@ namespace Med_Map.Controllers
             this.userManager = userManager;
         }
         #endregion
-
+        [ProducesResponseType(typeof(SuccessResponseDTO<UserDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<CustomerDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PharmacyDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        [Authorize]
         [HttpGet("privateGet")]         //api/user/privateGet
         public async Task<IActionResult> getPrivateDetails()
         {

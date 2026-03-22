@@ -6,5 +6,6 @@
         public string role { get; set; }
         public string userName { get; set; }
         public string email { get; set; }
+        public bool isRegistered { get; set; } = false;
     }
 }

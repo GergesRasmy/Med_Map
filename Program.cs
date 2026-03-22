@@ -22,7 +22,11 @@ public partial class Program
         {
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), x => x.UseNetTopologySuite());
         });
-        builder.Services.AddOpenApi();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen(c => {
+            c.SupportNonNullableReferenceTypes();
+            c.OperationFilter<Med_Map.Filters.MultipleResponseTypesOperationFilter>();
+        });
         #region repos registration
         builder.Services.AddScoped<IOtpRepository, OtpRepository>();
         builder.Services.AddScoped<ISessionRepository, SessionRepository>();
@@ -71,8 +75,8 @@ public partial class Program
 
         if (app.Environment.IsDevelopment())
         {
-            app.MapOpenApi();
-            app.MapScalarApiReference();
+            app.UseSwagger();
+            app.MapScalarApiReference(options => options.OpenApiRoutePattern = "/swagger/{documentName}/swagger.json");
         }
         app.UseHttpsRedirection();
         app.UseStaticFiles();

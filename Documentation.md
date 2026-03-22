@@ -55,6 +55,10 @@ f)api/medicine/search?query= 				✅
 	user must register to use this controller
 
 
+# 5-Pharmacy
+
+
+
 
 
 # ToDo non used models
