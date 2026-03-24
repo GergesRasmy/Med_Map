@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: c8b85605-0231-4183-8fc0-ef3b6ed783cc
+
+localResources:
+  specs:
+    - ..\obj\Debug\net10.0\EndpointInfo\Med_Map.json
