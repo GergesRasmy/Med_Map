@@ -74,8 +74,8 @@ namespace Med_Map.Controllers
             // Fetch and return pharmacy details
             else if (role == RoleConstants.Names.Pharmacy)
             {
-                var phar = await pharmacyRepository.GetByIdAsync(userId);
-                if (phar == null || phar.ActiveProfile == null)
+                var phar = await pharmacyRepository.GetByIdWithPendingAsync(userId); // ✅ use this instead
+                if (phar == null || (phar.ActiveProfile == null && phar.PendingProfile == null))
                 {
                     var Data = new UserDetailsDTO
                     {
@@ -83,42 +83,82 @@ namespace Med_Map.Controllers
                         role = role,
                         userName = user.UserName ?? "",
                         email = user.Email ?? "",
+                        displayName = user.displayName ?? ""
                     };
                     return SuccessResponse(Data, "User retrieved successfully", SuccessCodes.DataRetrieved);
                 }
-                // Extract document URLs
+
+                // Extract document URLs from ActiveProfile
                 List<string> LicenseImageUrls = new List<string>();
                 List<string> NationalIdUrls = new List<string>();
-                foreach (var doc in phar.ActiveProfile.Documents)
+                if (phar.ActiveProfile != null)
                 {
-                    if (doc.Type == DocumentType.PharmacyLicense)
-                        LicenseImageUrls.Add(doc.FileUrl);
-                    else if (doc.Type == DocumentType.NationalId)
-                        NationalIdUrls.Add(doc.FileUrl);
+                    foreach (var doc in phar.ActiveProfile.Documents)
+                    {
+                        if (doc.Type == DocumentType.PharmacyLicense)
+                            LicenseImageUrls.Add(doc.FileUrl);
+                        else if (doc.Type == DocumentType.NationalId)
+                            NationalIdUrls.Add(doc.FileUrl);
+                    }
                 }
-                // Map pharmacy details to DTO
+
+                // Extract document URLs from PendingProfile
+                List<string> PendingLicenseImageUrls = new List<string>();
+                List<string> PendingNationalIdUrls = new List<string>();
+                if (phar.PendingProfile != null)
+                {
+                    foreach (var doc in phar.PendingProfile.Documents)
+                    {
+                        if (doc.Type == DocumentType.PharmacyLicense)
+                            PendingLicenseImageUrls.Add(doc.FileUrl);
+                        else if (doc.Type == DocumentType.NationalId)
+                            PendingNationalIdUrls.Add(doc.FileUrl);
+                    }
+                }
+
                 var data = new PharmacyDetailsDTO
                 {
                     role = role,
                     id = Guid.Parse(phar.ApplicationUserId),
-                    userName = user.UserName??"",
+                    userName = user.UserName ?? "",
                     email = user.Email ?? "",
-                    phoneNumber = user.PhoneNumber??"",
-                    pharmacyName = phar.ActiveProfile.PharmacyName,
-                    pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
-                    address = phar.ActiveProfile.address,
-                    coordinates = phar.ActiveProfile.Location,
-                    openingTime = phar.ActiveProfile.OpeningTime,
-                    closingTime = phar.ActiveProfile.ClosingTime,
-                    is24Hours = phar.ActiveProfile.Is24Hours,
-                    deliveryAvailability = phar.ActiveProfile.HaveDelivary,
-                    licenseNumber = phar.ActiveProfile.LicenseNumber,
-                    licenseImageUrls = LicenseImageUrls,
-                    nationalIdUrls = NationalIdUrls
+                    phoneNumber = user.PhoneNumber ?? "",
+                    displayName = user.displayName ?? "",
+
+                    // Active profile
+                    activeProfile = phar.ActiveProfile == null ? null : new pharmacyProfileDTO
+                    {
+                        pharmacyName = phar.ActiveProfile.PharmacyName,
+                        pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new(),
+                        address = phar.ActiveProfile.address,
+                        coordinates = phar.ActiveProfile.Location,
+                        openingTime = phar.ActiveProfile.OpeningTime,
+                        closingTime = phar.ActiveProfile.ClosingTime,
+                        is24Hours = phar.ActiveProfile.Is24Hours,
+                        deliveryAvailability = phar.ActiveProfile.HaveDelivary,
+                        licenseNumber = phar.ActiveProfile.LicenseNumber,
+                        licenseImageUrls = LicenseImageUrls,
+                        nationalIdUrls = NationalIdUrls
+                    },
+
+                    // Pending profile
+                    pendingProfile = phar.PendingProfile == null ? null : new pharmacyProfileDTO
+                    {
+                        pharmacyName = phar.PendingProfile.PharmacyName,
+                        pharmacyPhones = phar.PendingProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new(),
+                        address = phar.PendingProfile.address,
+                        coordinates = phar.PendingProfile.Location,
+                        openingTime = phar.PendingProfile.OpeningTime,
+                        closingTime = phar.PendingProfile.ClosingTime,
+                        is24Hours = phar.PendingProfile.Is24Hours,
+                        deliveryAvailability = phar.PendingProfile.HaveDelivary,
+                        licenseNumber = phar.PendingProfile.LicenseNumber,
+                        licenseImageUrls = PendingLicenseImageUrls,
+                        nationalIdUrls = PendingNationalIdUrls
+                    }
                 };
                 return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
-            }
-            // Handle invalid role
+            }            // Handle invalid role
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
         
