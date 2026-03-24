@@ -37,17 +37,7 @@
                 user.UserName = model.userName;
             }
 
-            //if (model.newPassword != null)
-            //{
-            //    if (model.currentPassword == null)
-            //        return (false, "Current password is required.", ErrorCodes.ValidationError);
 
-            //    var passwordResult = await _userManager.ChangePasswordAsync(user, model.currentPassword, model.newPassword);
-            //    if (!passwordResult.Succeeded)
-            //        return (false, passwordResult.Errors.First().Description, ErrorCodes.ValidationError);
-            //}
-
-            user.IsActive = true;
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
                 return (false, "Failed to update user info.", ErrorCodes.InternalServerError);

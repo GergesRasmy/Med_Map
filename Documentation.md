@@ -18,15 +18,17 @@ a)api/customer/customerPublicGet?id=			✅
 
 b)api/customer/register				✅
 	registers new customer for the first time 
-	mandatory data to be added (phone number and date of birth)
 
 c)api/customer/update				✅
 	update user's existing data 
 	every thing is optional here user can update one field at a time
 
 # 3-User
-a)api/user/privateGet
+a)api/user/privateGet				✅
 	gets user private data (registration state doesn't matter)
+	if role form token
+	1)customer returns all user and customer data
+	2)pharmacy returns all user data and pharmacy pending and active profiles
 
 # 4-medicine
 a)api/medicine/add				✅
@@ -56,7 +58,28 @@ f)api/medicine/search?query= 				✅
 
 
 # 5-Pharmacy
+a) api/pharmacy/register 				✅
+	create new pharmacy profile for the first time
+	mandatory data to be added (all pharmacy data)
+	user data are optional
 
+b) api/pharmacy/update 				✅
+	updates pending profile or creates new pending profile if there is no pending profile
+
+c) api/pharmacy/activateProfile?userId 				✅
+	activates pending profiles and delete it
+
+d) api/pharmacy/pharmacypublicGet?id=  				✅
+   gets pharmacy using an id
+   only gets allowed public details
+
+e) api/pharmacy/searchPharmacyByName?name=   				✅
+   gets a list of pharmacies using it's name or doctor name
+   only gets allowed public details	
+   
+f) api/pharmacy/nearestPharmacy?latitude=&longitude=&radiusInMeters= 				✅
+   gets a list of pharmacies using a location and radius
+   only gets allowed public details	
 
 
 

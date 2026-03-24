@@ -26,6 +26,8 @@ namespace Med_Map.Controllers
         #endregion
         [HttpPost("register")]           //api/customer/register
         [Authorize(Roles = RoleConstants.Names.Customer)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<CustomerDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> RegisterCustomer([FromBody] CustomerRegisterDTO model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -55,6 +57,8 @@ namespace Med_Map.Controllers
        
         [HttpPatch("update")]           //api/customer/update
         [Authorize(Roles = RoleConstants.Names.Customer)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<CustomerDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdateCustomer([FromBody] CustomerUpdateDTO model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -82,6 +86,8 @@ namespace Med_Map.Controllers
         }
 
         [HttpGet("customerPublicGet")]           //api/customer/customerPublicGet
+        [ProducesResponseType(typeof(SuccessResponseDTO<PublicCustomerDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> getCustomerPublicDetails([FromQuery] string id)
         {
             // Retrieve customer details by ID
@@ -97,6 +103,7 @@ namespace Med_Map.Controllers
             var data = new PublicCustomerDetailsDTO 
             {
                 userName = user.UserName ,
+                displayName = user.displayName,
                 role ="Customer",
                 id = id
             };
@@ -109,6 +116,7 @@ namespace Med_Map.Controllers
                 id = customer.ApplicationUserId,
                 role = "Customer",
                 userName = customer.User.UserName??"",
+                displayName = customer.User.displayName??"",
                 email = customer.User.Email ?? "",
                 phoneNumber = customer.User.PhoneNumber,
                 address = customer.address,

@@ -2,6 +2,7 @@
 {
     public class ApplicationUser:IdentityUser
     {
+        public string? displayName { get; set; }
         public string? AvatarUrl { get; set; }
         [Required]
         public bool IsActive { get; set; }

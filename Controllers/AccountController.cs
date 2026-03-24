@@ -38,6 +38,8 @@ namespace Med_Map.Controllers
 
         //TODO testing 
         [HttpPost("register")]              //api/account/register
+        [ProducesResponseType(typeof(SuccessResponseDTO<OtpResponseDataDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> Register([FromBody] RegisterDTO model)
         {
             if (await userManager.Users.AnyAsync(u => u.NormalizedEmail == model.email.ToUpper()))
@@ -81,6 +83,8 @@ namespace Med_Map.Controllers
         }
 
         [HttpPost("verifyOtp")]           //api/Account/verifyotp
+        [ProducesResponseType(typeof(SuccessResponseDTO<AuthResponseDataDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
             //Check if the OTP exists, matches, hasn't been used, and isn't expired
@@ -110,6 +114,8 @@ namespace Med_Map.Controllers
         }
 
         [HttpPost("requestNewOtp")]           //api/Account/requestnewotp
+        [ProducesResponseType(typeof(SuccessResponseDTO<OtpResponseDataDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> requestNewOtp([FromBody] ResendOtpDto model)
         {
 
@@ -136,6 +142,8 @@ namespace Med_Map.Controllers
         }
 
         [HttpPost("login")]           //api/Account/login
+        [ProducesResponseType(typeof(SuccessResponseDTO<AuthResponseDataDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> login([FromBody]LoginDTO userDto)
         {
             //Find the user by email and verify the password

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NetTopologySuite.Index.HPRtree;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -32,6 +33,8 @@ namespace Med_Map.Controllers
         }
         #endregion
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         [HttpPost("register")]              //api/pharmacy/register
         public async Task<IActionResult> registerPharmacy([FromForm] RegisterPharmacyDTO model)
         {
@@ -40,6 +43,7 @@ namespace Med_Map.Controllers
             if (userId == null)return ErrorResponse("User not found.", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+            if (user.IsActive) return ErrorResponse("Already registered", ErrorCodes.InvalidAction);
 
             //change user's info
             if (model.userInfo != null)
@@ -53,9 +57,15 @@ namespace Med_Map.Controllers
             if (result.ErrorMessage != null) return ErrorResponse(result.ErrorMessage, result.ErrorCode!);
             try
             {
+                var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+                if (pharmacy == null)
+                {
+                    await pharmacyRepository.InsertAsync(new Pharmacy
+                    {
+                        ApplicationUserId = userId
+                    });
+                }
                 await pharmacyRepository.SaveToPendingAsync(userId, result.Profile!);
-                user.IsActive = true;
-                return SuccessResponse("Registration submitted successfully.", SuccessCodes.RegistrationPending);
             }
             catch (Exception ex)
             {
@@ -63,17 +73,23 @@ namespace Med_Map.Controllers
                 foreach (var path in result.UploadedFiles) await fileService.DeleteFileAsync(path);
                 return ErrorResponse("An unexpected error occurred.", ErrorCodes.InternalServerError);
             }
+            return SuccessResponse("Registration submitted successfully.", SuccessCodes.RegistrationPending);
         }
 
-        [HttpPost("update")]
+
+
+        [HttpPatch("update")]               //api/pharmacy/update
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdatePharmacy([FromForm] PharmacyUpdateDTO model)
         {
             //check if user exist
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
-            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
-            if (pharmacy == null) return ErrorResponse("Pharmacy profile not found. Please register first.", ErrorCodes.UserNotFound);
+            var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(userId);
+            if (pharmacy == null)
+                return ErrorResponse("Pharmacy profile not found. Please register first.", ErrorCodes.UserNotFound);
 
             //Updating user info
             var user = await userManager.FindByIdAsync(userId);
@@ -93,21 +109,45 @@ namespace Med_Map.Controllers
             if (result.ErrorMessage != null) return ErrorResponse(result.ErrorMessage, result.ErrorCode!);
             try
             {
-                if (pharmacy.ActiveProfile != null)
-                    await pharmacyRepository.UpdateInstantFieldsAsync(userId, model);
-
                 await pharmacyRepository.SaveToPendingAsync(userId, result.Profile!);
-                return SuccessResponse("Update submitted successfully.", SuccessCodes.DataUpdated);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Pharmacy update failed for user {UserId}", userId);
                 foreach (var path in result.UploadedFiles) await fileService.DeleteFileAsync(path);
-                return ErrorResponse("An unexpected error occurred.", ErrorCodes.InternalServerError);
+                return ErrorResponse("An unexpected error occurred.", ErrorCodes.ProfileCreationFailed);
             }
+            user.IsActive = false;
+            await userManager.UpdateAsync(user);
+            return SuccessResponse("Update submitted for review successfully.", SuccessCodes.DataUpdated);
         }
 
-        [HttpGet("pharmacyPublicGet")]              //api/pharmacy/pharmacypublicGet
+
+        [HttpPost("activateProfile")]         //api/pharmacy/activateProfile?userId={userId}
+        //[Authorize(Roles = RoleConstants.Names.Admin)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> ActivateProfile([FromQuery] string userId)
+        {
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null)
+                return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            var success = await pharmacyRepository.ActivateProfileAsync(userId);
+            if (!success)
+                return ErrorResponse("No pending profile found to activate.", ErrorCodes.DataNotFound);
+
+            user.IsActive = true;
+            await userManager.UpdateAsync(user);
+
+            return SuccessResponse("Pharmacy profile activated successfully.", SuccessCodes.DataUpdated);
+        }
+
+
+
+        [HttpGet("pharmacyPublicGet")]              //api/pharmacy/pharmacypublicGet?id={id}
+        [ProducesResponseType(typeof(SuccessResponseDTO<PublicPharmacyDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> getPharmacyPublicDetails([FromQuery] string id)
         {
             var phar = await pharmacyRepository.GetByIdAsync(id);
@@ -115,29 +155,54 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var data = MapToPublicDto(phar);
+            if (data == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
-        [HttpGet("searchPharmacyByName")]           //api/pharmacy/searchPharmacyByName
-        public async Task<IActionResult> SearchPharmacy([FromQuery] string name)
+
+
+        [HttpGet("searchPharmacyByName")]           //api/pharmacy/searchPharmacyByName?name={name}
+        [ProducesResponseType(typeof(SuccessResponseDTO<List<PublicPharmacyDetailsDTO>>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> SearchPharmacy([FromQuery] string name,int page = 1,int pageSize = 10)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return ErrorResponse("Search term is required.", ErrorCodes.ValidationError);
 
-            var pharmacies = await pharmacyRepository.GetByNameAsync(name);
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50; 
+
+            var (pharmacies, totalCount) = await pharmacyRepository.GetByNameAsync(name, page, pageSize);
+
+            if (totalCount == 0 || pharmacies == null || !pharmacies.Any())
+                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
 
             var result = pharmacies.Select(p => MapToPublicDto(p)).ToList();
-
-            return SuccessResponse(result, "Search results retrieved successfully", SuccessCodes.DataRetrieved);
+            if (result.Count == 0)
+                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
+            return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
-        [HttpGet("nearestPharmacy")]                //api/pharmacy/nearestPharmacy
-        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation)
-        {
-            var NearestPharmacies = await pharmacyRepository.GetNearestPharmacyAsync(MyLocation.latitude, MyLocation.longitude, MyLocation.radiusInMeters);
-            var result = NearestPharmacies.Select(p => MapToPublicDto(p)).ToList();
 
+
+        [HttpGet("nearestPharmacy")]                //api/pharmacy/nearestPharmacy?latitude={latitude}&longitude={longitude}&radiusInMeters={radiusInMeters}
+        [ProducesResponseType(typeof(SuccessResponseDTO<List<PublicPharmacyDetailsDTO>>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation,int page = 1, int pageSize = 10)
+        {
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
+            var (items, totalCount) = await pharmacyRepository.GetNearestPharmacyAsync(
+                MyLocation.latitude,
+                MyLocation.longitude,
+                MyLocation.radiusInMeters,
+                page,
+                pageSize); 
+            var result = items.Select(p => MapToPublicDto(p)).ToList();
+            if (result.Count == 0)
+                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
             return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
@@ -145,6 +210,7 @@ namespace Med_Map.Controllers
         //helper method to convert pharmacy to DTO
         private PublicPharmacyDetailsDTO MapToPublicDto(Pharmacy phar)
         {
+            if (phar == null || phar.ActiveProfile == null) return new PublicPharmacyDetailsDTO();
             return new PublicPharmacyDetailsDTO
             {
                 role = "Pharmacy",
@@ -271,6 +337,8 @@ namespace Med_Map.Controllers
 
             foreach (var phone in phones)
             {
+                if (string.IsNullOrWhiteSpace(phone))
+                    continue;
                 if (!Regex.IsMatch(phone, @"^(\+201|01)[0125][0-9]{8}$"))
                     return (new List<string>(), "Wrong phone number format.", ErrorCodes.WrongFormat);
                 validatedPhones.Add(phone);

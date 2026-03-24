@@ -7,5 +7,6 @@
         public string userName { get; set; }
         public string email { get; set; }
         public bool isRegistered { get; set; } = false;
+        public string displayName { get; set; }
     }
 }

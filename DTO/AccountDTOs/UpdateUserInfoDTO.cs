@@ -7,7 +7,6 @@
         [EmailAddress(ErrorMessage = "Invalid email format")]
         public string? email { get; set; }
         public string? userName { get; set; }
-        public string? currentPassword { get; set; }
-        public string? newPassword { get; set; }
+        public string? displayName { get; set; }
     }
 }

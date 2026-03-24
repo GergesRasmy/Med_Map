@@ -16,7 +16,7 @@ namespace Med_Map.Controllers
         private readonly IMedicineRepository medicineRepository;
         private readonly IFileService fileService;
 
-        public MedicineController( IMedicineRepository medicineRepository,IFileService fileService)
+        public MedicineController(IMedicineRepository medicineRepository, IFileService fileService)
         {
             this.medicineRepository = medicineRepository;
             this.fileService = fileService;
@@ -25,6 +25,8 @@ namespace Med_Map.Controllers
 
         //? [Authorize(Roles = RoleConstants.Names.Admin)]
         [HttpPost("add")]               //api/medicine/add
+        [ProducesResponseType(typeof(SuccessResponseDTO<MedicineResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> AddMedicine([FromForm] AddMedicineDTO medicine)
         {
             //check if the medicine already exists
@@ -61,7 +63,7 @@ namespace Med_Map.Controllers
             catch (Exception ex)
             {
                 if (imagePath != null)
-                    await fileService.DeleteFileAsync(imagePath); 
+                    await fileService.DeleteFileAsync(imagePath);
                 return ErrorResponse("Failed to save medicine", ErrorCodes.DataBaseError, ex.Message);
             }
             var response = MapToDto(newMedicine);
@@ -69,6 +71,8 @@ namespace Med_Map.Controllers
         }
         //? [Authorize(Roles = RoleConstants.Names.Admin)]
         [HttpPatch("update")]            //api/medicine/update
+        [ProducesResponseType(typeof(SuccessResponseDTO<MedicineResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdateMedicine([FromForm] UpdateMedicineDTO NewMedicine)
         {
             //Check if the new trade name is already taken by another medicine (excluding the current medicine)
@@ -106,7 +110,9 @@ namespace Med_Map.Controllers
         }
         //? [Authorize(Roles = RoleConstants.Names.Admin)]
         [HttpDelete("delete")]             // api/medicine/delete?id=
-        public async Task<IActionResult> DeleteMedicine([FromQuery]string id)
+        [ProducesResponseType(typeof(SuccessResponseDTO<string>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> DeleteMedicine([FromQuery] string id)
         {
             //Get the existing medicine from the database
             var medicine = await medicineRepository.GetByIdAsync(id);
@@ -117,9 +123,11 @@ namespace Med_Map.Controllers
             await medicineRepository.DeleteAsync(medicine);
             return SuccessResponse(message: "Medicine deleted successfully", code: SuccessCodes.DataDeleted);
         }
-       
-        
+
+
         [HttpGet("allMedicine")]        //api/medicine/order/allMedicine
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> getAllMedicine([FromQuery] int page = 1)
         {
             //get the medicine from the database
@@ -141,6 +149,8 @@ namespace Med_Map.Controllers
             return SuccessResponse(response, "Medicines retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [HttpGet("getById")]            // api/medicine/getById?id=
+        [ProducesResponseType(typeof(SuccessResponseDTO<MedicineResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> GetMedicineById([FromQuery]string id)
         {
             //get the medicine from the database
@@ -153,6 +163,8 @@ namespace Med_Map.Controllers
             return SuccessResponse<MedicineResponseDTO>(response, "Medicine retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [HttpGet("search")]             // api/medicine/search?query=
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> SearchMedicine([FromQuery] string query, [FromQuery] int page = 1)
         {
             //Search for medicines by trade name in the database
