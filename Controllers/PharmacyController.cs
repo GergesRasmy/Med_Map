@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NetTopologySuite.Index.HPRtree;
+using System.Data;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -87,9 +88,13 @@ namespace Med_Map.Controllers
             //check if user exist
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
             var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(userId);
             if (pharmacy == null)
                 return ErrorResponse("Pharmacy profile not found. Please register first.", ErrorCodes.UserNotFound);
+            
+            var existingBase = pharmacy.PendingProfile ?? pharmacy.ActiveProfile;
+            if (existingBase == null) return ErrorResponse("No profile found.", ErrorCodes.UserNotFound);
 
             //Updating user info
             var user = await userManager.FindByIdAsync(userId);
@@ -101,15 +106,12 @@ namespace Med_Map.Controllers
                 if (!success) return ErrorResponse(errorMessage!, errorCode!);
             }
             //build profile using the helper
-            var existing = pharmacy.PendingProfile ?? pharmacy.ActiveProfile;
-            if (existing == null)
-                return ErrorResponse("No profile found to update.", ErrorCodes.UserNotFound);
-
-            var result = await BuildUpdatedProfileAsync(model, existing);
+            var result = await BuildUpdatedProfileAsync(model, existingBase);
             if (result.ErrorMessage != null) return ErrorResponse(result.ErrorMessage, result.ErrorCode!);
             try
             {
                 await pharmacyRepository.SaveToPendingAsync(userId, result.Profile!);
+                foreach (var path in result.OldFilesToDelete) await fileService.DeleteFileAsync(path);
             }
             catch (Exception ex)
             {
@@ -206,6 +208,33 @@ namespace Med_Map.Controllers
             return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
+
+        [HttpGet("pharmacies")]                     //api/pharmacy/pharmacies
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> GetAllPharmacies([FromQuery] int page = 1, int pageSize = 10)
+        {
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
+           
+            var (pharmacies, totalCount) = await pharmacyRepository.GetAllPharmaciesPaginatedAsync(page, pageSize);
+
+            if (totalCount == 0)
+                return SuccessResponse(new { items = new List<object>(), totalCount = 0 }, "No pharmacies found", SuccessCodes.DataRetrieved);
+
+            // 3. Map the list using the helper
+            var itemsDto = pharmacies.Select(MapToDetailedDto).ToList();
+
+            // 4. Return paginated object
+            return SuccessResponse(new
+            {
+                items = itemsDto,
+                totalCount = totalCount,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            }, "Pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
+        }
         #region Helper Methods
         //helper method to convert pharmacy to DTO
         private PublicPharmacyDetailsDTO MapToPublicDto(Pharmacy phar)
@@ -224,6 +253,52 @@ namespace Med_Map.Controllers
                 closingTime = phar.ActiveProfile.ClosingTime,
                 is24Hours = phar.ActiveProfile.Is24Hours,
                 deliveryAvailability = phar.ActiveProfile.HaveDelivary
+            };
+        }
+
+        private PharmacyDetailsDTO MapToDetailedDto(Pharmacy phar)
+        {
+            return new PharmacyDetailsDTO
+            {
+                role = RoleConstants.Names.Pharmacy,
+                id = Guid.Parse(phar.ApplicationUserId),
+                userName = phar.User?.UserName ?? "",
+                email = phar.User?.Email ?? "",
+                phoneNumber = phar.User?.PhoneNumber ?? "",
+                displayName = phar.User?.displayName ?? "",
+
+                activeProfile = MapProfileToDto(phar.ActiveProfile),
+                pendingProfile = MapProfileToDto(phar.PendingProfile)
+            };
+        }
+
+        private pharmacyProfileDTO? MapProfileToDto(PharmacyProfile? profile)
+        {
+            if (profile == null) return null;
+
+            // Extract documents by type using a clean LINQ query
+            var licenseUrls = profile.Documents?
+                .Where(d => d.Type == DocumentType.PharmacyLicense)
+                .Select(d => d.FileUrl).ToList() ?? new();
+
+            var nationalIdUrls = profile.Documents?
+                .Where(d => d.Type == DocumentType.NationalId)
+                .Select(d => d.FileUrl).ToList() ?? new();
+
+            return new pharmacyProfileDTO
+            {
+                pharmacyName = profile.PharmacyName,
+                pharmacyPhones = profile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new(),
+                address = profile.address,
+                latitude = profile.Location?.Y ?? 0,
+                longitude = profile.Location?.X ?? 0,
+                openingTime = profile.OpeningTime,
+                closingTime = profile.ClosingTime,
+                is24Hours = profile.Is24Hours,
+                deliveryAvailability = profile.HaveDelivary,
+                licenseNumber = profile.LicenseNumber,
+                licenseImageUrls = licenseUrls,
+                nationalIdUrls = nationalIdUrls
             };
         }
 
@@ -262,6 +337,8 @@ namespace Med_Map.Controllers
         {
             var (validatedPhones, phoneError, phoneErrorCode) = ValidatePhones(model.pharmacyPhones);
             if (phoneError != null) return new BuildProfileResult(null, new List<string>(), new List<string>(), phoneError, phoneErrorCode);
+
+            // This now correctly merges old and new docs
             var (documents, uploadedFiles, oldFilesToDelete, error) = await ProcessDocumentsAsync(model.nationalIds, model.licenseImages, existing.Documents);
             if (error != null) return error;
 
@@ -271,6 +348,7 @@ namespace Med_Map.Controllers
 
             var profile = new PharmacyProfile
             {
+                Id = Guid.Empty,
                 Location = location,
                 PharmacyName = model.pharmacyName ?? existing.PharmacyName,
                 address = model.address ?? existing.address,
@@ -279,46 +357,58 @@ namespace Med_Map.Controllers
                 Is24Hours = model.is24Hours ?? existing.Is24Hours,
                 OpeningTime = model.openingTime ?? existing.OpeningTime,
                 ClosingTime = model.closingTime ?? existing.ClosingTime,
-                Documents = documents,
+                Documents = documents, // These are now clean instances
                 PhoneNumbers = validatedPhones.Count > 0
                     ? validatedPhones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()
-                    : existing.PhoneNumbers.ToList()
+                    : existing.PhoneNumbers.Select(p => new PharmacyPhoneNumbers { Number = p.Number }).ToList()
             };
 
             return new BuildProfileResult(profile, uploadedFiles, oldFilesToDelete, null, null);
         }
-
         //helper method to validate Documents
         private async Task<(List<PharmacyDocument> documents, List<string> uploadedFiles, List<string> oldFilesToDelete, BuildProfileResult? error)>
         ProcessDocumentsAsync(List<IFormFile>? nationalIds, List<IFormFile>? licenseImages, ICollection<PharmacyDocument>? existingDocuments = null)
         {
             var uploadedFiles = new List<string>();
             var oldFilesToDelete = new List<string>();
-            var documents = existingDocuments?.ToList() ?? new List<PharmacyDocument>();
+            // Start with a copy of existing docs
+            var documents = existingDocuments?.Select(d => new PharmacyDocument
+            {
+                FileUrl = d.FileUrl,
+                Type = d.Type
+            }).ToList() ?? new List<PharmacyDocument>();
 
             try
             {
-                if ((nationalIds != null || licenseImages != null) && existingDocuments != null)
+                // Only replace National IDs if NEW ones are provided
+                if (nationalIds != null && nationalIds.Count > 0)
                 {
-                    oldFilesToDelete = documents.Select(d => d.FileUrl).ToList();
-                    documents.Clear();
-                }
+                    var oldNids = documents.Where(d => d.Type == DocumentType.NationalId).ToList();
+                    oldFilesToDelete.AddRange(oldNids.Select(d => d.FileUrl));
+                    documents.RemoveAll(d => d.Type == DocumentType.NationalId);
 
-                if (nationalIds != null)
                     foreach (var file in nationalIds)
                     {
                         string path = await fileService.SaveFileAsync(file, "National_Ids");
                         uploadedFiles.Add(path);
                         documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
                     }
+                }
 
-                if (licenseImages != null)
+                // Only replace License Images if NEW ones are provided
+                if (licenseImages != null && licenseImages.Count > 0)
+                {
+                    var oldLicenses = documents.Where(d => d.Type == DocumentType.PharmacyLicense).ToList();
+                    oldFilesToDelete.AddRange(oldLicenses.Select(d => d.FileUrl));
+                    documents.RemoveAll(d => d.Type == DocumentType.PharmacyLicense);
+
                     foreach (var file in licenseImages)
                     {
                         string path = await fileService.SaveFileAsync(file, "Pharmacy_Licenses");
                         uploadedFiles.Add(path);
                         documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
                     }
+                }
 
                 return (documents, uploadedFiles, oldFilesToDelete, null);
             }

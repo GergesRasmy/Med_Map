@@ -4,6 +4,7 @@ using Med_Map.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 
@@ -12,9 +13,11 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     [DbContext(typeof(Mm_Context))]
-    partial class Mm_ContextModelSnapshot : ModelSnapshot
+    [Migration("20260325175113_FixShadowForeignKey3")]
+    partial class FixShadowForeignKey3
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -608,12 +611,17 @@ namespace Med_Map.Migrations
                     b.Property<Guid>("PharmacyProfileId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("PharmacyProfileId1")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("PharmacyProfileId");
+
+                    b.HasIndex("PharmacyProfileId1");
 
                     b.ToTable("PharmacyDocument");
                 });
@@ -663,10 +671,15 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("PharmacyProfileId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PharmacyId");
 
                     b.HasIndex("PharmacyProfileId");
 
@@ -1054,9 +1067,15 @@ namespace Med_Map.Migrations
 
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyDocument", b =>
                 {
-                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "PharmacyProfile")
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
                         .WithMany("Documents")
                         .HasForeignKey("PharmacyProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "PharmacyProfile")
+                        .WithMany()
+                        .HasForeignKey("PharmacyProfileId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1091,6 +1110,12 @@ namespace Med_Map.Migrations
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyPhoneNumbers", b =>
                 {
                     b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "Pharmacy")
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
                         .WithMany("PhoneNumbers")
                         .HasForeignKey("PharmacyProfileId")
                         .OnDelete(DeleteBehavior.Cascade)

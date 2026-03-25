@@ -74,7 +74,7 @@ namespace Med_Map.Controllers
             // Fetch and return pharmacy details
             else if (role == RoleConstants.Names.Pharmacy)
             {
-                var phar = await pharmacyRepository.GetByIdWithPendingAsync(userId); // ✅ use this instead
+                var phar = await pharmacyRepository.GetByIdWithPendingAsync(userId);
                 if (phar == null || (phar.ActiveProfile == null && phar.PendingProfile == null))
                 {
                     var Data = new UserDetailsDTO
@@ -148,8 +148,8 @@ namespace Med_Map.Controllers
                         pharmacyName = phar.PendingProfile.PharmacyName,
                         pharmacyPhones = phar.PendingProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new(),
                         address = phar.PendingProfile.address,
-                        latitude = phar.ActiveProfile.Location.Y,
-                        longitude = phar.ActiveProfile.Location.X,
+                        latitude = phar.PendingProfile.Location.Y,
+                        longitude = phar.PendingProfile.Location.X,
                         openingTime = phar.PendingProfile.OpeningTime,
                         closingTime = phar.PendingProfile.ClosingTime,
                         is24Hours = phar.PendingProfile.Is24Hours,
@@ -160,7 +160,7 @@ namespace Med_Map.Controllers
                     }
                 };
                 return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
-            }            // Handle invalid role
+            }// Handle invalid role
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
         

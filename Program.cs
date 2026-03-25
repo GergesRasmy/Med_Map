@@ -25,8 +25,10 @@ public partial class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c => {
             c.SupportNonNullableReferenceTypes();
+            c.UseAllOfToExtendReferenceSchemas();
             c.OperationFilter<Med_Map.Filters.MultipleResponseTypesOperationFilter>();
         });
+       
         #region repos registration
         builder.Services.AddScoped<IOtpRepository, OtpRepository>();
         builder.Services.AddScoped<ISessionRepository, SessionRepository>();

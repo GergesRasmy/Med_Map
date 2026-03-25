@@ -24,35 +24,54 @@ namespace Med_Map.Repositories.PharmacyRepos
 
                 if (pharmacy == null) throw new Exception("Pharmacy not found");
 
+                // 1. Wipe the old Pending Profile completely
                 if (pharmacy.PendingProfile != null)
                 {
-                    var oldProfile = pharmacy.PendingProfile;
+                    _context.Set<PharmacyDocument>().RemoveRange(pharmacy.PendingProfile.Documents);
+                    _context.Set<PharmacyPhoneNumbers>().RemoveRange(pharmacy.PendingProfile.PhoneNumbers);
+                    _context.PharmacyProfile.Remove(pharmacy.PendingProfile);
 
-                    if (oldProfile.Documents != null)
-                        _context.Set<PharmacyDocument>().RemoveRange(oldProfile.Documents);
-
-                    if (oldProfile.PhoneNumbers != null)
-                        _context.Set<PharmacyPhoneNumbers>().RemoveRange(oldProfile.PhoneNumbers);
-
-                    _context.PharmacyProfille.Remove(oldProfile);
-
+                    // Sync the deletion before adding new data to avoid unique constraint hits
                     await _context.SaveChangesAsync();
                 }
 
-                _context.Entry(newProfile).State = EntityState.Added;
+                // 2. Prepare the new profile graph
+                newProfile.Id = Guid.Empty; // Ensure it's 0000...
+                foreach (var doc in newProfile.Documents) doc.Id = Guid.Empty;
+                foreach (var phone in newProfile.PhoneNumbers) phone.Id = Guid.Empty;
 
+                // 3. Add to context and Link to the Pharmacy
+                _context.PharmacyProfile.Add(newProfile);
                 pharmacy.PendingProfile = newProfile;
-                await _context.SaveChangesAsync();
 
+                // 4. Save everything
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                logger.LogError(ex, "SaveToPendingAsync failed: {Message} | Inner: {Inner}",
-                    ex.Message, ex.InnerException?.Message); 
+                logger.LogError(ex, "SaveToPendingAsync failed: {Message}", ex.Message);
                 throw;
             }
+        }
+        public async Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize)
+        {
+            var query = _context.Pharmacy.AsNoTracking()
+                .Include(p => p.User)
+                .Include(p => p.ActiveProfile).ThenInclude(ap => ap!.Documents)
+                .Include(p => p.ActiveProfile).ThenInclude(ap => ap!.PhoneNumbers)
+                .Include(p => p.PendingProfile).ThenInclude(pp => pp!.Documents)
+                .Include(p => p.PendingProfile).ThenInclude(pp => pp!.PhoneNumbers);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderBy(p => p.ApplicationUserId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
         public async Task InsertAsync(Pharmacy pharmacy)
         {

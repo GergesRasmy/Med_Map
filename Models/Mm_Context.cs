@@ -18,7 +18,7 @@ namespace Med_Map.Models
         public DbSet<OrderItem> OrderItem { get; set; }
         public DbSet<Orders> Orders { get; set; }
         public DbSet<Pharmacy> Pharmacy { get; set; }
-        public DbSet<PharmacyProfile> PharmacyProfille { get; set; }
+        public DbSet<PharmacyProfile> PharmacyProfile { get; set; }
         public DbSet<PharmacyInventory> PharmacyInventory { get; set; }
         public DbSet<Recommendation> Recommendation { get; set; }
         public DbSet<Wallet> Wallet { get; set; }
@@ -88,6 +88,7 @@ namespace Med_Map.Models
                       .HasForeignKey(p => p.PendingProfileId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
+          
         }
         #endregion
 

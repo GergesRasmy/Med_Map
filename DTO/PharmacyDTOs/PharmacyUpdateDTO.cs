@@ -8,7 +8,9 @@
         public string? pharmacyName { get; set; }
         public string? licenseNumber { get; set; }
         public string? address { get; set; }
+        [Range(-90, 90)]
         public double? latitude { get; set; }
+        [Range(-180, 180)]
         public double? longitude { get; set; }
         public TimeSpan? openingTime { get; set; }
         public TimeSpan? closingTime { get; set; }

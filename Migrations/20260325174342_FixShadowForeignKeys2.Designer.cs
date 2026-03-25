@@ -4,6 +4,7 @@ using Med_Map.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 
@@ -12,9 +13,11 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     [DbContext(typeof(Mm_Context))]
-    partial class Mm_ContextModelSnapshot : ModelSnapshot
+    [Migration("20260325174342_FixShadowForeignKeys2")]
+    partial class FixShadowForeignKeys2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -605,6 +608,9 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("PharmacyProfileId")
                         .HasColumnType("uniqueidentifier");
 
@@ -612,6 +618,8 @@ namespace Med_Map.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PharmacyId");
 
                     b.HasIndex("PharmacyProfileId");
 
@@ -663,10 +671,15 @@ namespace Med_Map.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid>("PharmacyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("PharmacyProfileId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PharmacyId");
 
                     b.HasIndex("PharmacyProfileId");
 
@@ -1054,13 +1067,19 @@ namespace Med_Map.Migrations
 
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyDocument", b =>
                 {
-                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "PharmacyProfile")
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "Pharmacy")
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
                         .WithMany("Documents")
                         .HasForeignKey("PharmacyProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("PharmacyProfile");
+                    b.Navigation("Pharmacy");
                 });
 
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyInventory", b =>
@@ -1091,6 +1110,12 @@ namespace Med_Map.Migrations
             modelBuilder.Entity("Med_Map.Models.pharmacy.PharmacyPhoneNumbers", b =>
                 {
                     b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", "Pharmacy")
+                        .WithMany()
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Med_Map.Models.pharmacy.PharmacyProfile", null)
                         .WithMany("PhoneNumbers")
                         .HasForeignKey("PharmacyProfileId")
                         .OnDelete(DeleteBehavior.Cascade)

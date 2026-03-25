@@ -13,7 +13,8 @@
                 double radiusInMeters,
                 int page,
                 int pageSize = 10);
-            Task SaveChangesAsync();
+        Task SaveChangesAsync();
+        Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize);
         Task InsertAsync(Pharmacy pharmacy);
         Task<Pharmacy?> GetByIdWithPendingAsync(string id);
     }
