@@ -33,7 +33,7 @@ namespace Med_Map.Controllers
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
         }
         #endregion
-        [Authorize]
+        [Authorize(Roles = RoleConstants.Names.Customer)]
         [HttpPost("place")]                     //api/order/place
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
