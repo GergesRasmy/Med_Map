@@ -81,6 +81,19 @@ f) api/pharmacy/nearestPharmacy?latitude=&longitude=&radiusInMeters= 				✅
    gets a list of pharmacies using a location and radius
    only gets allowed public details	
 
+# 6-Pharmacy Inventory
+a) api/pharmacyInventory/insertMedicine				✅
+   inserts a medicine from the database with quantity,price and expiry date
+
+b) api/pharmacyInventory/updateInventory				✅
+   update medicine's data
+
+c) api/pharmacy/removeMedicine				✅
+   removes medicine from inventory
+
+d) api/pharmacyInventory/viewInventory?page=				✅
+   retrieves pharmacy's inventory
+
 
 
 

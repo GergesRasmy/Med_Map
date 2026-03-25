@@ -38,6 +38,21 @@ namespace Med_Map.Repositories.PharmacyRepos
 
             return true;
         }
+        public async Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyProfileId, int page, int pageSize = 10)
+        {
+            var query = _context.PharmacyInventory
+                .AsNoTracking()
+                .Include(pi => pi.Medicine)
+                .Where(pi => pi.PharmacyProfileId == Guid.Parse(pharmacyProfileId));
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();

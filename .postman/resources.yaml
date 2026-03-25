@@ -5,3 +5,6 @@ workspace:
 localResources:
   specs:
     - ..\obj\Debug\net10.0\EndpointInfo\Med_Map.json
+cloudResources:
+  collections:
+    ..\postman\collections\Med_Map: 4bbb6da9-7cba-4f03-9c6c-2e6d32b441b6

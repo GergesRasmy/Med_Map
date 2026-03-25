@@ -383,3 +383,4 @@ Postman/
 .postman
 
 /wwwroot/uploads/*
+/.postman/resources.yaml

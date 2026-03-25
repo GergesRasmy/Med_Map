@@ -25,6 +25,8 @@ namespace Med_Map.Controllers
         }
         #endregion
         [HttpPost("insertMedicine")]                //api/pharmacyInventory/insertMedicine
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> InsertMedicine([FromBody] PharmacyInvetoryDTO model)
         {
             // Verify the Pharmacy exists and has an active profile
@@ -44,6 +46,8 @@ namespace Med_Map.Controllers
                 .GetPharmacyMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId);
             if (existingEntry != null)
                 return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
+            if (model.expiryDate < DateOnly.FromDateTime(DateTime.UtcNow))
+                return ErrorResponse("Medicine has expired.", ErrorCodes.ValidationError);
 
             // Map and Insert then return response
             var inventoryItem = new PharmacyInventory
@@ -66,6 +70,8 @@ namespace Med_Map.Controllers
             }
         }
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
         {
             //verify the inventory belongs to the requesting pharmacy
@@ -98,6 +104,8 @@ namespace Med_Map.Controllers
             }
         }
         [HttpDelete("removeMedicine")] // api/pharmacy/removeMedicine
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> RemoveMedicine([FromBody] InventoryReference model)
         {
             //verify the inventory belongs to the requesting pharmacy
@@ -112,6 +120,41 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Medicine not found.", ErrorCodes.DataNotFound);
 
             return SuccessResponse("Medicine removed successfully", SuccessCodes.DataDeleted);
+        }
+        [HttpGet("viewInventory")]              // api/pharmacyInventory/viewInventory?page=1
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> ViewInventory([FromQuery] int page = 1)
+        {
+            if (page < 1) page = 1;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy?.ActiveProfile == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+
+            var (items, totalCount) = await pharmacyInventoryRepository
+                .GetPharmacyInventoryAsync(pharmacy.ActiveProfile.Id.ToString(), page);
+
+            var response = new
+            {
+                currentPage = page,
+                totalPages = (int)Math.Ceiling(totalCount / 10.0),
+                totalCount = totalCount,
+                data = items.Select(pi => new
+                {
+                    medicineId = pi.MedicineId,
+                    tradeName = pi.Medicine?.TradeName,
+                    genericName = pi.Medicine?.GenericName,
+                    quantity = pi.StockQuantity,
+                    expiryDate = pi.ExpiryDate,
+                    price = pi.Price
+                }).ToList()
+            };
+
+            return SuccessResponse(response, "Inventory retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
     }
