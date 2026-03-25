@@ -7,7 +7,7 @@ using NetTopologySuite.Geometries;
 namespace Med_Map.Migrations
 {
     /// <inheritdoc />
-    public partial class pharmacy_profile : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,6 +31,7 @@ namespace Med_Map.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    displayName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     AvatarUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -236,8 +237,7 @@ namespace Med_Map.Migrations
                         name: "FK_OtpCodes_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -258,8 +258,7 @@ namespace Med_Map.Migrations
                         name: "FK_UserSession_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -294,6 +293,122 @@ namespace Med_Map.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PharmacyDocument",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PharmacyDocument", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PharmacyDocument_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PharmacyInventory",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    StockQuantity = table.Column<int>(type: "int", nullable: false),
+                    ExpiryDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MedicineId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LinkedAlternativeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PharmacyInventory", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PharmacyInventory_MedicineMaster_MedicineId",
+                        column: x => x.MedicineId,
+                        principalTable: "MedicineMaster",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                    table.ForeignKey(
+                        name: "FK_PharmacyInventory_PharmacyInventory_LinkedAlternativeId",
+                        column: x => x.LinkedAlternativeId,
+                        principalTable: "PharmacyInventory",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_PharmacyInventory_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PharmacyPhoneNumbers",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Number = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PharmacyPhoneNumbers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PharmacyPhoneNumbers_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Wallet",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CurrentBalance = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TotalEarnings = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Wallet", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Wallet_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WithdrawalRequest",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    RequestDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    AdminComment = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ReceiptImage = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WithdrawalRequest", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WithdrawalRequest_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AiChatSession",
                 columns: table => new
                 {
@@ -321,7 +436,7 @@ namespace Med_Map.Migrations
                     Status = table.Column<int>(type: "int", nullable: false),
                     ServicePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     AssignedPersonnel = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
-                    PharmacyApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CustomerApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
                 },
                 constraints: table =>
@@ -334,10 +449,10 @@ namespace Med_Map.Migrations
                         principalColumn: "ApplicationUserId",
                         onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
-                        name: "FK_DoctorRequest_Pharmacy_PharmacyApplicationUserId",
-                        column: x => x.PharmacyApplicationUserId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
+                        name: "FK_DoctorRequest_PharmacyProfille_PharmacyProfileId",
+                        column: x => x.PharmacyProfileId,
+                        principalTable: "PharmacyProfille",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.NoAction);
                 });
 
@@ -352,7 +467,7 @@ namespace Med_Map.Migrations
                     DeliveryAddress = table.Column<Point>(type: "geography", nullable: false),
                     TotalAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     CustomerId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -364,138 +479,10 @@ namespace Med_Map.Migrations
                         principalColumn: "ApplicationUserId",
                         onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
-                        name: "FK_Orders_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
-                        onDelete: ReferentialAction.NoAction);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "PharmacyDocument",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Type = table.Column<int>(type: "int", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PharmacyDocument", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_PharmacyDocument_PharmacyProfille_PharmacyProfileId",
+                        name: "FK_Orders_PharmacyProfille_PharmacyProfileId",
                         column: x => x.PharmacyProfileId,
                         principalTable: "PharmacyProfille",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_PharmacyDocument_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
-                        onDelete: ReferentialAction.NoAction);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "PharmacyInventory",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    StockQuantity = table.Column<int>(type: "int", nullable: false),
-                    ExpiryDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    MedicineId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LinkedAlternativeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PharmacyInventory", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_PharmacyInventory_MedicineMaster_MedicineId",
-                        column: x => x.MedicineId,
-                        principalTable: "MedicineMaster",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
-                    table.ForeignKey(
-                        name: "FK_PharmacyInventory_PharmacyInventory_LinkedAlternativeId",
-                        column: x => x.LinkedAlternativeId,
-                        principalTable: "PharmacyInventory",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_PharmacyInventory_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
-                        onDelete: ReferentialAction.NoAction);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "PharmacyPhoneNumbers",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Number = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PharmacyProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PharmacyPhoneNumbers", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_PharmacyPhoneNumbers_PharmacyProfille_PharmacyProfileId",
-                        column: x => x.PharmacyProfileId,
-                        principalTable: "PharmacyProfille",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_PharmacyPhoneNumbers_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
-                        onDelete: ReferentialAction.NoAction);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Wallet",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CurrentBalance = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    TotalEarnings = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Wallet", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Wallet_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
-                        onDelete: ReferentialAction.NoAction);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "WithdrawalRequest",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    RequestDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    AdminComment = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ReceiptImage = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PharmacyId = table.Column<string>(type: "nvarchar(450)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_WithdrawalRequest", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_WithdrawalRequest_Pharmacy_PharmacyId",
-                        column: x => x.PharmacyId,
-                        principalTable: "Pharmacy",
-                        principalColumn: "ApplicationUserId",
                         onDelete: ReferentialAction.NoAction);
                 });
 
@@ -549,6 +536,33 @@ namespace Med_Map.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Payment",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    OrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PaymentProvider = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ProviderOrderId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ProviderTransactionId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payment", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Payment_Orders_OrderId",
+                        column: x => x.OrderId,
+                        principalTable: "Orders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AiChatResponse",
                 columns: table => new
                 {
@@ -566,6 +580,27 @@ namespace Med_Map.Migrations
                         name: "FK_AiChatResponse_AiChatRequest_RequestId",
                         column: x => x.RequestId,
                         principalTable: "AiChatRequest",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.NoAction);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PaymentLog",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PaymentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Event = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PaymentLog", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PaymentLog_Payment_PaymentId",
+                        column: x => x.PaymentId,
+                        principalTable: "Payment",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.NoAction);
                 });
@@ -661,9 +696,9 @@ namespace Med_Map.Migrations
                 column: "CustomerApplicationUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DoctorRequest_PharmacyApplicationUserId",
+                name: "IX_DoctorRequest_PharmacyProfileId",
                 table: "DoctorRequest",
-                column: "PharmacyApplicationUserId");
+                column: "PharmacyProfileId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MedicineMaster_TradeName",
@@ -687,9 +722,9 @@ namespace Med_Map.Migrations
                 column: "CustomerId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Orders_PharmacyId",
+                name: "IX_Orders_PharmacyProfileId",
                 table: "Orders",
-                column: "PharmacyId");
+                column: "PharmacyProfileId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_OtpCodes_SessionId",
@@ -703,6 +738,16 @@ namespace Med_Map.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Payment_OrderId",
+                table: "Payment",
+                column: "OrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PaymentLog_PaymentId",
+                table: "PaymentLog",
+                column: "PaymentId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Pharmacy_ActiveProfileId",
                 table: "Pharmacy",
                 column: "ActiveProfileId");
@@ -711,11 +756,6 @@ namespace Med_Map.Migrations
                 name: "IX_Pharmacy_PendingProfileId",
                 table: "Pharmacy",
                 column: "PendingProfileId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PharmacyDocument_PharmacyId",
-                table: "PharmacyDocument",
-                column: "PharmacyId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PharmacyDocument_PharmacyProfileId",
@@ -733,14 +773,9 @@ namespace Med_Map.Migrations
                 column: "MedicineId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PharmacyInventory_PharmacyId",
+                name: "IX_PharmacyInventory_PharmacyProfileId",
                 table: "PharmacyInventory",
-                column: "PharmacyId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PharmacyPhoneNumbers_PharmacyId",
-                table: "PharmacyPhoneNumbers",
-                column: "PharmacyId");
+                column: "PharmacyProfileId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PharmacyPhoneNumbers_PharmacyProfileId",
@@ -765,14 +800,14 @@ namespace Med_Map.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Wallet_PharmacyId",
+                name: "IX_Wallet_PharmacyProfileId",
                 table: "Wallet",
-                column: "PharmacyId");
+                column: "PharmacyProfileId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_WithdrawalRequest_PharmacyId",
+                name: "IX_WithdrawalRequest_PharmacyProfileId",
                 table: "WithdrawalRequest",
-                column: "PharmacyId");
+                column: "PharmacyProfileId");
         }
 
         /// <inheritdoc />
@@ -803,6 +838,12 @@ namespace Med_Map.Migrations
                 name: "OtpCodes");
 
             migrationBuilder.DropTable(
+                name: "PaymentLog");
+
+            migrationBuilder.DropTable(
+                name: "Pharmacy");
+
+            migrationBuilder.DropTable(
                 name: "PharmacyDocument");
 
             migrationBuilder.DropTable(
@@ -827,7 +868,7 @@ namespace Med_Map.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Orders");
+                name: "Payment");
 
             migrationBuilder.DropTable(
                 name: "MedicineMaster");
@@ -836,7 +877,7 @@ namespace Med_Map.Migrations
                 name: "AiChatResponse");
 
             migrationBuilder.DropTable(
-                name: "Pharmacy");
+                name: "Orders");
 
             migrationBuilder.DropTable(
                 name: "AiChatRequest");
