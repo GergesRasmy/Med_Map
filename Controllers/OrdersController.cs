@@ -48,7 +48,7 @@ namespace Med_Map.Controllers
 
             //Map DTO to Order Model
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
-            var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.longitude, orderDTO.latitude));
+            var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.deliveryLongitude, orderDTO.deliveryLongitude));
             var newOrder = new Orders
             {
                 CustomerId = userId,

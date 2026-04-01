@@ -5,9 +5,9 @@
         [Required]
         public string paymentOption { get; set; }
         [Required]
-        public double longitude { get; set; }
+        public double deliveryLongitude { get; set; }
         [Required]
-        public double latitude { get; set; }
+        public double deliveryLatitude { get; set; }
         public Guid pharmacyId { get; set; }
         public List<OrderItemDTO> items { get; set; }
     }

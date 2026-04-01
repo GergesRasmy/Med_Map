@@ -63,6 +63,7 @@ namespace Med_Map.Controllers
                     id = customer.ApplicationUserId,
                     role = role,
                     userName = user.UserName ,
+                    displayName = user.displayName,
                     email = user.Email ,
                     phoneNumber = user.PhoneNumber,
                     address = customer.address ,
@@ -83,7 +84,6 @@ namespace Med_Map.Controllers
                         role = role,
                         userName = user.UserName ?? "",
                         email = user.Email ?? "",
-                        displayName = user.displayName ?? ""
                     };
                     return SuccessResponse(Data, "User retrieved successfully", SuccessCodes.DataRetrieved);
                 }
