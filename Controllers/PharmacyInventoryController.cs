@@ -72,7 +72,7 @@ namespace Med_Map.Controllers
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
         [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
+        public async Task<IActionResult> UpdateInventory([FromBody] UpdateInventoryDTO model)
         {
             //verify the inventory belongs to the requesting pharmacy
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -88,9 +88,9 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Medicine not found in pharmacy inventory", ErrorCodes.DataNotFound);
 
             //Apply updates
-            existingItem.StockQuantity = model.quantity;
-            existingItem.ExpiryDate = model.expiryDate;
-            existingItem.Price = model.price;
+            if (model.quantity.HasValue) existingItem.StockQuantity = model.quantity.Value;
+            if (model.expiryDate.HasValue) existingItem.ExpiryDate = model.expiryDate.Value;
+            if (model.price.HasValue) existingItem.Price = model.price.Value;
 
             //Save changes
             try
