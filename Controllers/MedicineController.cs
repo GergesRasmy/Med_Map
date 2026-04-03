@@ -126,7 +126,7 @@ namespace Med_Map.Controllers
 
 
         [HttpGet("allMedicine")]        //api/medicine/order/allMedicine
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<MedicineResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> getAllMedicine([FromQuery] int page = 1)
         {
@@ -136,15 +136,16 @@ namespace Med_Map.Controllers
             var (medicines, totalCount) = await medicineRepository.GetAllMedicineAsync(page, Constant.PageSize);
 
             if (medicines == null || !medicines.Any())
-                return SuccessResponse(new List<MedicineResponseDTO>(), "No medicines found", SuccessCodes.DataRetrieved);
+                return SuccessResponse(new PagedDTO<MedicineResponseDTO> { currentPage = page, pageSize = Constant.PageSize, totalPages = 0, totalCount = 0, items = new List<MedicineResponseDTO>() }, "No medicines found", SuccessCodes.DataRetrieved);
 
             //Map to DTO and Return Response
-            var response = new
+            var response = new PagedDTO<MedicineResponseDTO>
             {
                 currentPage = page,
-                totalPages = (int)Math.Ceiling(totalCount /(decimal)Constant.PageSize),
+                pageSize = Constant.PageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (decimal)Constant.PageSize),
                 totalCount = totalCount,
-                data = medicines.Select(MapToDto).ToList()
+                items = medicines.Select(MapToDto).ToList()
             };
             return SuccessResponse(response, "Medicines retrieved successfully", SuccessCodes.DataRetrieved);
         }
@@ -163,7 +164,7 @@ namespace Med_Map.Controllers
             return SuccessResponse<MedicineResponseDTO>(response, "Medicine retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [HttpGet("search")]             // api/medicine/search?query=
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<MedicineResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> SearchMedicine([FromQuery] string query, [FromQuery] int page = 1)
         {
@@ -172,15 +173,16 @@ namespace Med_Map.Controllers
 
             var (medicines, totalCount) = await medicineRepository.GetByTradeNameAsync(query, page, Constant.PageSize);
             if (medicines == null || !medicines.Any())
-                return SuccessResponse(new List<MedicineResponseDTO>(), "No medicines found matching the search criteria", SuccessCodes.DataRetrieved);
+                return SuccessResponse(new PagedDTO<MedicineResponseDTO> { currentPage = page, pageSize = Constant.PageSize, totalPages = 0, totalCount = 0, items = new List<MedicineResponseDTO>() }, "No medicines found matching the search criteria", SuccessCodes.DataRetrieved);
 
             //Map to DTO and Return Response
-            var response = new
+            var response = new PagedDTO<MedicineResponseDTO>
             {
                 currentPage = page,
+                pageSize = Constant.PageSize,
                 totalPages = (int)Math.Ceiling(totalCount / (decimal)Constant.PageSize),
                 totalCount = totalCount,
-                data = medicines.Select(MapToDto).ToList()
+                items = medicines.Select(MapToDto).ToList()
             };
             return SuccessResponse(response, "Medicines retrieved successfully", SuccessCodes.DataRetrieved);
         }

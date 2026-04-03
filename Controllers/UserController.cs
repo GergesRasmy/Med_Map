@@ -62,9 +62,9 @@ namespace Med_Map.Controllers
                 {
                     id = customer.ApplicationUserId,
                     role = role,
-                    userName = user.UserName ,
-                    displayName = user.displayName,
-                    email = user.Email ,
+                    userName = user.UserName ?? "",
+                    displayName = user.displayName ?? "",
+                    email = user.Email ?? "",
                     phoneNumber = user.PhoneNumber,
                     address = customer.address ,
                     birthDate = customer.BirthDate,

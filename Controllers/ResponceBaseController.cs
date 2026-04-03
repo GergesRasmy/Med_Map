@@ -14,9 +14,7 @@ namespace Med_Map.Controllers
 
         [NonAction]
         protected IActionResult SuccessResponse(string message, string code)
-        {
-            return Ok(new { Success = true, Message = message, Code = code });
-        }
+            => Ok(new SuccessResponseDTO<object> { success = true, message = message, code = code, data = null });
 
         [NonAction]
         protected IActionResult ErrorResponse(string message, string code = ErrorCodes.InternalServerError, object? errors = null)

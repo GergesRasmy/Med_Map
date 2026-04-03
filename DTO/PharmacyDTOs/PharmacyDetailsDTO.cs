@@ -10,6 +10,6 @@
         public string displayName { get; set; }
         public pharmacyProfileDTO? activeProfile { get; set; }   
         public pharmacyProfileDTO? pendingProfile { get; set; }
-
+        public bool isRegistered { get; set; }= true;
     }
 }

@@ -34,7 +34,7 @@ namespace Med_Map.Controllers
         }
         #endregion
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         [HttpPost("register")]              //api/pharmacy/register
         public async Task<IActionResult> registerPharmacy([FromForm] RegisterPharmacyDTO model)
@@ -81,7 +81,7 @@ namespace Med_Map.Controllers
 
         [HttpPatch("update")]               //api/pharmacy/update
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdatePharmacy([FromForm] PharmacyUpdateDTO model)
         {
@@ -127,7 +127,7 @@ namespace Med_Map.Controllers
 
         [HttpPost("activateProfile")]         //api/pharmacy/activateProfile?userId={userId}
         //[Authorize(Roles = RoleConstants.Names.Admin)]
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> ActivateProfile([FromQuery] string userId)
         {
@@ -166,33 +166,36 @@ namespace Med_Map.Controllers
 
 
         [HttpGet("searchPharmacyByName")]           //api/pharmacy/searchPharmacyByName?name={name}
-        [ProducesResponseType(typeof(SuccessResponseDTO<List<PublicPharmacyDetailsDTO>>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<PublicPharmacyDetailsDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> SearchPharmacy([FromQuery] string name,int page = 1,int pageSize = 10)
+        public async Task<IActionResult> SearchPharmacy([FromQuery] string name, int page = 1, int pageSize = 10)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return ErrorResponse("Search term is required.", ErrorCodes.ValidationError);
 
             if (page < 1) page = 1;
-            if (pageSize > 50) pageSize = 50; 
+            if (pageSize > 50) pageSize = 50;
 
             var (pharmacies, totalCount) = await pharmacyRepository.GetByNameAsync(name, page, pageSize);
 
-            if (totalCount == 0 || pharmacies == null || !pharmacies.Any())
-                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
+            var result = pharmacies?.Select(p => MapToPublicDto(p)).ToList() ?? new List<PublicPharmacyDetailsDTO>();
 
-            var result = pharmacies.Select(p => MapToPublicDto(p)).ToList();
-            if (result.Count == 0)
-                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
-            return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
+            return SuccessResponse(new PagedDTO<PublicPharmacyDetailsDTO>
+            {
+                items = result,
+                totalCount = totalCount,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            }, "Pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
 
 
         [HttpGet("nearestPharmacy")]                //api/pharmacy/nearestPharmacy?latitude={latitude}&longitude={longitude}&radiusInMeters={radiusInMeters}
-        [ProducesResponseType(typeof(SuccessResponseDTO<List<PublicPharmacyDetailsDTO>>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<PublicPharmacyDetailsDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation,int page = 1, int pageSize = 10)
+        public async Task<IActionResult> GetNearestPharmacies([FromQuery] LocationRequest MyLocation, int page = 1, int pageSize = 10)
         {
             if (page < 1) page = 1;
             if (pageSize > 50) pageSize = 50;
@@ -201,32 +204,38 @@ namespace Med_Map.Controllers
                 MyLocation.longitude,
                 MyLocation.radiusInMeters,
                 page,
-                pageSize); 
-            var result = items.Select(p => MapToPublicDto(p)).ToList();
-            if (result.Count == 0)
-                return ErrorResponse("No pharmacies found.", ErrorCodes.DataNotFound);
-            return SuccessResponse(result, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
+                pageSize);
+            var result = items?.Select(p => MapToPublicDto(p)).ToList() ?? new List<PublicPharmacyDetailsDTO>();
+
+            return SuccessResponse(new PagedDTO<PublicPharmacyDetailsDTO>
+            {
+                items = result,
+                totalCount = totalCount,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            }, "Nearby pharmacies retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
 
         [HttpGet("pharmacies")]                     //api/pharmacy/pharmacies
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<PharmacyDetailsDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> GetAllPharmacies([FromQuery] int page = 1, int pageSize = 10)
         {
             if (page < 1) page = 1;
             if (pageSize > 50) pageSize = 50;
-           
+
             var (pharmacies, totalCount) = await pharmacyRepository.GetAllPharmaciesPaginatedAsync(page, pageSize);
 
             if (totalCount == 0)
-                return SuccessResponse(new { items = new List<object>(), totalCount = 0 }, "No pharmacies found", SuccessCodes.DataRetrieved);
+                return SuccessResponse(new PagedDTO<PharmacyDetailsDTO> { items = new List<PharmacyDetailsDTO>(), totalCount = 0, currentPage = page, pageSize = pageSize, totalPages = 0 }, "No pharmacies found", SuccessCodes.DataRetrieved);
 
             // 3. Map the list using the helper
             var itemsDto = pharmacies.Select(MapToDetailedDto).ToList();
 
             // 4. Return paginated object
-            return SuccessResponse(new
+            return SuccessResponse(new PagedDTO<PharmacyDetailsDTO>
             {
                 items = itemsDto,
                 totalCount = totalCount,
@@ -244,6 +253,8 @@ namespace Med_Map.Controllers
             {
                 role = "Pharmacy",
                 id = Guid.Parse(phar.ApplicationUserId),
+                userName = phar.User?.UserName ?? "",
+                displayName = phar.User?.displayName ?? "",
                 pharmacyName = phar.ActiveProfile.PharmacyName,
                 pharmacyPhones = phar.ActiveProfile.PhoneNumbers?.Select(pn => pn.Number).ToList() ?? new List<string>(),
                 address = phar.ActiveProfile.address,

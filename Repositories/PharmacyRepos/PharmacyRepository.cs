@@ -160,9 +160,10 @@ namespace Med_Map.Repositories.PharmacyRepos
             var myLocation = geometryFactory.CreatePoint(new Coordinate(longitude, latitude));
 
             var query = _context.Pharmacy.AsNoTracking()
+                .Include(p => p.User)
                 .Include(p => p.ActiveProfile)
                 .Where(p => p.ActiveProfile != null &&
-                            p.ActiveProfile.Location.Distance(myLocation) * 111320 <= radiusInMeters);
+                            p.ActiveProfile.Location.Distance(myLocation) <= radiusInMeters);
 
             var totalCount = await query.CountAsync();
 

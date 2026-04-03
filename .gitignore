@@ -384,3 +384,6 @@ Postman/
 
 /wwwroot/uploads/*
 /.postman/resources.yaml
+docker-compose.yml
+Dockerfile
+Dockerfile.migrate

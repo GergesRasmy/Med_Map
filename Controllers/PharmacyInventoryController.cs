@@ -25,7 +25,7 @@ namespace Med_Map.Controllers
         }
         #endregion
         [HttpPost("insertMedicine")]                //api/pharmacyInventory/insertMedicine
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> InsertMedicine([FromBody] PharmacyInvetoryDTO model)
         {
@@ -70,7 +70,7 @@ namespace Med_Map.Controllers
             }
         }
         [HttpPost("updateInventory")]                // api/pharmacyInventory/updateInventory
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> UpdateInventory([FromBody] PharmacyInvetoryDTO model)
         {
@@ -104,12 +104,13 @@ namespace Med_Map.Controllers
             }
         }
         [HttpDelete("removeMedicine")] // api/pharmacy/removeMedicine
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> RemoveMedicine([FromBody] InventoryReference model)
         {
             //verify the inventory belongs to the requesting pharmacy
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
             if (pharmacy?.ActiveProfile == null)
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
@@ -121,12 +122,13 @@ namespace Med_Map.Controllers
 
             return SuccessResponse("Medicine removed successfully", SuccessCodes.DataDeleted);
         }
-        [HttpGet("viewInventory")]              // api/pharmacyInventory/viewInventory?page=1
-        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [HttpGet("viewInventory")]              // api/pharmacyInventory/viewInventory?page=1&pageSize=10
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<InventoryItemResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> ViewInventory([FromQuery] int page = 1)
+        public async Task<IActionResult> ViewInventory([FromQuery] int page = 1, int pageSize = 10)
         {
             if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
@@ -136,14 +138,15 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var (items, totalCount) = await pharmacyInventoryRepository
-                .GetPharmacyInventoryAsync(pharmacy.ActiveProfile.Id.ToString(), page);
+                .GetPharmacyInventoryAsync(pharmacy.ActiveProfile.Id.ToString(), page, pageSize);
 
-            var response = new
+            var response = new PagedDTO<InventoryItemResponseDTO>
             {
                 currentPage = page,
-                totalPages = (int)Math.Ceiling(totalCount / 10.0),
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                 totalCount = totalCount,
-                data = items.Select(pi => new
+                items = items.Select(pi => new InventoryItemResponseDTO
                 {
                     medicineId = pi.MedicineId,
                     tradeName = pi.Medicine?.TradeName,

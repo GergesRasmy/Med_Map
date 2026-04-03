@@ -35,11 +35,13 @@ namespace Med_Map.Controllers
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found",ErrorCodes.UserNotFound);
             if (user.IsActive == true) return ErrorResponse("User Already Registered", ErrorCodes.InvalidAction);
-            if (model.userInfo.phoneNumber == null) return ErrorResponse("Phone number is required", ErrorCodes.ValidationError);
 
-            var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
-            if (!success) return ErrorResponse(errorMessage!, errorCode!);
-            
+            if (model.userInfo != null)
+            {
+                var (success, errorMessage, errorCode) = await accountService.UpdateUserInfoAsync(user, model.userInfo);
+                if (!success) return ErrorResponse(errorMessage!, errorCode!);
+            }
+
             var customer = new Customer
             {
                 ApplicationUserId = userId,
@@ -103,7 +105,7 @@ namespace Med_Map.Controllers
             var data = new PublicCustomerDetailsDTO 
             {
                 userName = user.UserName ,
-                displayName = user.displayName,
+                displayName = user.displayName ?? "",
                 role ="Customer",
                 id = id
             };

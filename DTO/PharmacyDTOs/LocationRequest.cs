@@ -10,7 +10,7 @@
         [Range(-180, 180, ErrorMessage = "Longitude must be between -180 and 180.")]
         public double longitude { get; set; }
 
-        [Range(0.1, 100, ErrorMessage = "Radius must be between 0.1 and 100 km.")]
-        public double radiusInMeters { get; set; } = 5;
+        [Range(10, 5000, ErrorMessage = "Radius must be between 10 and 5000 meters.")]
+        public double radiusInMeters { get; set; } = 100;
     }
 }
