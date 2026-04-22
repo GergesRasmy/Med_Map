@@ -36,7 +36,10 @@
                     return (false, "Username is already in use.", ErrorCodes.DuplicateEntry);
                 user.UserName = model.userName;
             }
-
+            if (model.displayName != null)
+            {
+                user.displayName = model.displayName;
+            }
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)

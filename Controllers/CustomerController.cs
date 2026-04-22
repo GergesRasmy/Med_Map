@@ -50,7 +50,7 @@ namespace Med_Map.Controllers
                 BirthDate = model.birthDate,
                 MedicalHistory = model.medicalHistory
             };
-
+            user.IsActive = true;
             await customerRepository.InsertAsync(customer);
             var data = MapToCustomerDetails(customer);
 

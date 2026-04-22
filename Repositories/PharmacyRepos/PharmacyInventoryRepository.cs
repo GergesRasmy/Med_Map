@@ -12,7 +12,25 @@ namespace Med_Map.Repositories.PharmacyRepos
             _context = context;
         }
 
-     
+        public async Task<PharmacyInventory?> GetPharmacyMedicineBatchAsync(string pharmacyProfileId, string medicineId, DateOnly expiryDate)
+        {
+            return await _context.PharmacyInventory
+                .FirstOrDefaultAsync(pi =>
+                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.Id.ToString() == medicineId&&
+                    pi.ExpiryDate == expiryDate);
+        }
+
+        public async Task<List<PharmacyInventory>> GetMedicineBatchesAsync(string pharmacyProfileId, string medicineId)
+        {
+            return await _context.PharmacyInventory
+                .Include(pi => pi.Medicine)
+                .Where(pi =>
+                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.Id.ToString() == medicineId)
+                .OrderBy(pi => pi.ExpiryDate) // FIFO — earliest expiry first
+                .ToListAsync();
+        }
         public async Task<PharmacyInventory?> GetPharmacyMedicineAsync(string pharmacyId, Guid medicineId)
         {
             return await _context.PharmacyInventory

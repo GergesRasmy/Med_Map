@@ -42,10 +42,9 @@ namespace Med_Map.Controllers
             if (medicineMaster == null) return ErrorResponse("Medicine not found in master database", ErrorCodes.DataNotFound);
 
             // Prevent duplicate entry (Check if already in inventory)
-            var existingEntry = await pharmacyInventoryRepository
-                .GetPharmacyMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId);
-            if (existingEntry != null)
-                return ErrorResponse("Medicine already exists in this pharmacy inventory", ErrorCodes.DuplicateEntry);
+            var existingBatch = await pharmacyInventoryRepository.GetPharmacyMedicineBatchAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId.ToString(), model.expiryDate);
+            if (existingBatch != null)
+                return ErrorResponse("A batch with this medicine and expiry date already exists", ErrorCodes.DuplicateEntry);
             if (model.expiryDate < DateOnly.FromDateTime(DateTime.UtcNow))
                 return ErrorResponse("Medicine has expired.", ErrorCodes.ValidationError);
 
@@ -158,6 +157,42 @@ namespace Med_Map.Controllers
             };
 
             return SuccessResponse(response, "Inventory retrieved successfully", SuccessCodes.DataRetrieved);
+        }
+        [HttpGet("viewMedicineBatches/{medicineId}")]   // api/pharmacyInventory/viewMedicineBatches/42
+        [ProducesResponseType(typeof(SuccessResponseDTO<MedicineBatchesResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> ViewMedicineBatches([FromRoute] string medicineId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy?.ActiveProfile == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+
+            var batches = await pharmacyInventoryRepository
+                .GetMedicineBatchesAsync(pharmacy.ActiveProfile.Id.ToString(), medicineId);
+
+            if (!batches.Any())
+                return ErrorResponse("No batches found for this medicine", ErrorCodes.DataNotFound);
+
+            var medicine = batches.First().Medicine;
+            var response = new MedicineBatchesResponseDTO
+            {
+                medicineId = Guid.Parse(medicineId),
+                tradeName = medicine?.TradeName,
+                genericName = medicine?.GenericName,
+                totalStock = batches.Sum(b => b.StockQuantity),
+                batches = batches.Select(b => new BatchItemDTO
+                {
+                    batchId = b.Id,
+                    quantity = b.StockQuantity,
+                    expiryDate = b.ExpiryDate,
+                    price = b.Price
+                }).ToList()
+            };
+
+            return SuccessResponse(response, "Medicine batches retrieved successfully", SuccessCodes.DataRetrieved);
         }
 
     }

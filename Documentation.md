@@ -84,6 +84,7 @@ f) api/pharmacy/nearestPharmacy?latitude=&longitude=&radiusInMeters= 				✅
 # 6-Pharmacy Inventory
 a) api/pharmacyInventory/insertMedicine				✅
    inserts a medicine from the database with quantity,price and expiry date
+   now allows multiple entries for the same medicine with different expiry dates 
 
 b) api/pharmacyInventory/updateInventory				✅
    update medicine's data
@@ -93,6 +94,9 @@ c) api/pharmacy/removeMedicine				✅
 
 d) api/pharmacyInventory/viewInventory?page=				✅
    retrieves pharmacy's inventory
+
+e) api/pharmacyInventory/viewMedicineBatches/42
+   view medicine stored batches
 
 
 
