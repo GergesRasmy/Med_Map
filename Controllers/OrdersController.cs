@@ -40,6 +40,7 @@ namespace Med_Map.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration); 
 
             // Validate Payment Option
@@ -55,16 +56,17 @@ namespace Med_Map.Controllers
 
             //Map DTO to Order Model
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
-            var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.deliveryLongitude, orderDTO.deliveryLongitude));
+            var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.deliveryLongitude, orderDTO.deliveryLatitude));
             var newOrder = new Orders
             {
                 CustomerId = userId,
                 PharmacyProfileId = orderDTO.pharmacyId,
                 DeliveryAddress = location,
                 PaymentType = paymentType,
-                Status = StatusList.Pending,
+                Status = StatusList.Recorded,
                 CreatedAt = DateTime.UtcNow,
-                OrderItems = new List<OrderItem>()
+                OrderItems = new List<OrderItem>(),
+                FulfillmentType = fulfillment
             };
 
             //Calculate Total and Add Items
@@ -105,30 +107,23 @@ namespace Med_Map.Controllers
         [HttpPatch("update-status/{orderId}")]
         public async Task<IActionResult> UpdateOrderStatus(string orderId, [FromBody] StatusList nextStatus)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
+            if (pharmacy?.ActiveProfile == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
             var order = await orderRepository.GetOrderByIdAsync(orderId);
             if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
+            if (order.PharmacyProfileId != pharmacy.ActiveProfile.Id)
+                return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            // 1. Basic transition validation
-            if (!_validTransitions.ContainsKey(order.Status) || !_validTransitions[order.Status].Contains(nextStatus))
-            {
-                return ErrorResponse($"Cannot transition from {order.Status} to {nextStatus}", ErrorCodes.InvalidAction);
-            }
+            // Basic transition validation
+            var transitions = order.FulfillmentType == FulfillmentType.Delivery ? _deliveryTransitions : _pickupTransitions;
 
-            // 2. Fulfillment specific logic
-            if (order.FulfillmentType == FulfillmentType.Pickup)
-            {
-                // For Pickup, we skip 'OutForDelivery' and go straight to 'ReadyForPickup' or 'Delivered'
-                if (nextStatus == StatusList.OutForDelivery)
-                    return ErrorResponse("Pickup orders cannot be 'Out for Delivery'", ErrorCodes.InvalidAction);
-            }
+            if (!transitions.TryGetValue(order.Status, out var allowed) || !allowed.Contains(nextStatus))
+                return ErrorResponse($"Cannot transition from {order.Status} to {nextStatus} for a {order.FulfillmentType} order",ErrorCodes.InvalidAction);
 
-            if (order.FulfillmentType == FulfillmentType.Delivery)
-            {
-                if (nextStatus == StatusList.ReadyForPickup)
-                    return ErrorResponse("Delivery orders cannot be 'Ready for Pickup'", ErrorCodes.InvalidAction);
-            }
-
-            // 3. Update the status
+            // Update the status
             order.Status = nextStatus;
 
             // If status is Delivered, you might want to set a delivery timestamp
@@ -149,6 +144,7 @@ namespace Med_Map.Controllers
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
             var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -171,6 +167,7 @@ namespace Med_Map.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if(userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
             var role = User.FindFirstValue(ClaimTypes.Role);
@@ -199,12 +196,22 @@ namespace Med_Map.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return ErrorResponse("Unauthorized access", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
             var success = await orderRepository.CancelOrder(orderId, userId);
 
             if (!success)
                 return ErrorResponse("Order cannot be cancelled at this stage.", ErrorCodes.InvalidAction);
+            var order = await orderRepository.GetOrderByIdAsync(orderId);
+            foreach (var item in order.OrderItems)
+            {
+                var inventory = await pharmacyInventoryRepository
+                    .GetPharmacyMedicineAsync(order.PharmacyProfileId.ToString(), item.MedicineId);
+                if (inventory != null)
+                    inventory.StockQuantity += item.Quantity;
+            }
+            await pharmacyInventoryRepository.SaveChangesAsync();
 
             return SuccessResponse("Order cancelled successfully", SuccessCodes.DataUpdated);
         }
@@ -213,26 +220,33 @@ namespace Med_Map.Controllers
         {
             return new OrderResponseDTO
             {
-                Id = order.Id,
-                CreatedAt = order.CreatedAt,
-                Status = order.Status.ToString(),
-                TotalAmount = order.TotalAmount,
-                Items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => new OrderItemResponseDTO
+                id = order.Id,
+                createdAt = order.CreatedAt,
+                status = order.Status.ToString(),
+                totalAmount = order.TotalAmount,
+                items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => new OrderItemResponseDTO
                 {
                     MedicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
                     Quantity = oi.Quantity,
                     UnitPrice = oi.Medicine?.Price ?? 0
-                }).ToList()
+                }).ToList(),
+                fulfillmentType = order.FulfillmentType.ToString()
+               
             };
         }
 
-        private readonly Dictionary<StatusList, List<StatusList>> _validTransitions = new()
+        private readonly Dictionary<StatusList, List<StatusList>> _deliveryTransitions = new()
         {
-            { StatusList.Recorded, new List<StatusList> { StatusList.Packaged, StatusList.Canceled } },
-            { StatusList.Packaged, new List<StatusList> { StatusList.OutForDelivery, StatusList.ReadyForPickup, StatusList.Canceled } },
-            { StatusList.OutForDelivery, new List<StatusList> { StatusList.Delivered, StatusList.Canceled } },
-            { StatusList.ReadyForPickup, new List<StatusList> { StatusList.Delivered, StatusList.Canceled } },
-            // Terminal states (Delivered, Canceled) have no further transitions
+            { StatusList.Recorded,        new() { StatusList.Packaged, StatusList.Canceled } },
+            { StatusList.Packaged,        new() { StatusList.OutForDelivery, StatusList.Canceled } },
+            { StatusList.OutForDelivery,  new() { StatusList.Delivered, StatusList.Canceled } },
+        };
+
+        private readonly Dictionary<StatusList, List<StatusList>> _pickupTransitions = new()
+        {
+            { StatusList.Recorded,        new() { StatusList.Packaged, StatusList.Canceled } },
+            { StatusList.Packaged,        new() { StatusList.ReadyForPickup, StatusList.Canceled } },
+            { StatusList.ReadyForPickup,  new() { StatusList.Delivered } },
         };
 
     }
