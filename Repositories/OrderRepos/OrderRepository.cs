@@ -35,7 +35,49 @@
                                         .ThenInclude(oi => oi.Medicine)
                                         .FirstOrDefaultAsync(o => o.Id == guid);
         }
-        // Inside your OrderRepository.cs
+        public async Task UpdateAsync(Orders order)
+        {
+            _context.Orders.Update(order);
+            await SaveChangesAsync();
+        }
+        public async Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                if (order == null) return false;
+
+                // If moving TO Canceled, we must restore the stock
+                if (nextStatus == StatusList.Canceled && order.Status != StatusList.Canceled)
+                {
+                    foreach (var item in order.OrderItems)
+                    {
+                        var inventory = await _context.PharmacyInventory
+                            .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == order.PharmacyProfileId
+                                                    && pi.MedicineId == item.MedicineId);
+                        if (inventory != null)
+                        {
+                            inventory.StockQuantity += item.Quantity;
+                        }
+                    }
+                }
+
+                order.Status = nextStatus;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+        }
         public async Task<bool> CancelOrder(string orderId, string userId)
         {
             // You likely have access to the DbContext here, which is exactly where it belongs!
@@ -64,7 +106,7 @@
                     }
                 }
 
-                order.Status = StatusList.Cancelled;
+                order.Status = StatusList.Canceled;
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

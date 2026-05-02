@@ -45,6 +45,13 @@ namespace Med_Map.Controllers
             // Validate Payment Option
             if (!Enum.TryParse<PaymentOptions>(orderDTO.paymentOption, true, out var paymentType))
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);
+            // Validate Fulfillment Type (New)
+            if (!Enum.TryParse<FulfillmentType>(orderDTO.fulfillmentType, true, out var fulfillment))
+                return ErrorResponse("Invalid fulfillment type", ErrorCodes.InvalidInput);
+
+            // Enforce Delivery Rules: Must use Card
+            if (fulfillment == FulfillmentType.Delivery && paymentType != PaymentOptions.Online)
+                return ErrorResponse("Delivery requires card payment", ErrorCodes.InvalidAction);
 
             //Map DTO to Order Model
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
@@ -93,6 +100,45 @@ namespace Med_Map.Controllers
 
             var response = MapOrderToResponseDTO(newOrder);
             return SuccessResponse(response, "Order created successfully", SuccessCodes.DataCreated);
+        }
+        [Authorize(Roles = RoleConstants.Names.Pharmacy)]
+        [HttpPatch("update-status/{orderId}")]
+        public async Task<IActionResult> UpdateOrderStatus(string orderId, [FromBody] StatusList nextStatus)
+        {
+            var order = await orderRepository.GetOrderByIdAsync(orderId);
+            if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
+
+            // 1. Basic transition validation
+            if (!_validTransitions.ContainsKey(order.Status) || !_validTransitions[order.Status].Contains(nextStatus))
+            {
+                return ErrorResponse($"Cannot transition from {order.Status} to {nextStatus}", ErrorCodes.InvalidAction);
+            }
+
+            // 2. Fulfillment specific logic
+            if (order.FulfillmentType == FulfillmentType.Pickup)
+            {
+                // For Pickup, we skip 'OutForDelivery' and go straight to 'ReadyForPickup' or 'Delivered'
+                if (nextStatus == StatusList.OutForDelivery)
+                    return ErrorResponse("Pickup orders cannot be 'Out for Delivery'", ErrorCodes.InvalidAction);
+            }
+
+            if (order.FulfillmentType == FulfillmentType.Delivery)
+            {
+                if (nextStatus == StatusList.ReadyForPickup)
+                    return ErrorResponse("Delivery orders cannot be 'Ready for Pickup'", ErrorCodes.InvalidAction);
+            }
+
+            // 3. Update the status
+            order.Status = nextStatus;
+
+            // If status is Delivered, you might want to set a delivery timestamp
+            if (nextStatus == StatusList.Delivered)
+            {
+                order.DeliveredAt = DateTime.UtcNow;
+            }
+
+            await orderRepository.UpdateStatusAsync(order.Id,nextStatus);
+            return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
         }
         [Authorize]
         [HttpGet("myOrders")]                   //api/order/myOrders
@@ -180,6 +226,14 @@ namespace Med_Map.Controllers
             };
         }
 
+        private readonly Dictionary<StatusList, List<StatusList>> _validTransitions = new()
+        {
+            { StatusList.Recorded, new List<StatusList> { StatusList.Packaged, StatusList.Canceled } },
+            { StatusList.Packaged, new List<StatusList> { StatusList.OutForDelivery, StatusList.ReadyForPickup, StatusList.Canceled } },
+            { StatusList.OutForDelivery, new List<StatusList> { StatusList.Delivered, StatusList.Canceled } },
+            { StatusList.ReadyForPickup, new List<StatusList> { StatusList.Delivered, StatusList.Canceled } },
+            // Terminal states (Delivered, Canceled) have no further transitions
+        };
 
     }
 }

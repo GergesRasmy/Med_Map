@@ -7,7 +7,7 @@
         Task<Orders?> GetOrderByIdAsync(string orderId);
         Task<bool> CancelOrder(string orderId, string userId);
         Task SaveChangesAsync();
-
-
+        Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus);
+        Task UpdateAsync(Orders order);
     }
 }

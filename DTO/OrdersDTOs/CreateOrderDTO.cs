@@ -5,6 +5,8 @@
         [Required]
         public string paymentOption { get; set; }
         [Required]
+        public string fulfillmentType { get; set; }
+        [Required]
         public double deliveryLongitude { get; set; }
         [Required]
         public double deliveryLatitude { get; set; }

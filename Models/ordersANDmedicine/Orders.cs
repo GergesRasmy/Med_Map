@@ -9,15 +9,23 @@ namespace Med_Map.Models.ordersANDmedicine
     public enum StatusList
     {
         Pending,
-        Preparing,
+        Recorded,   
+        Packaged,
+        OutForDelivery,
+        ReadyForPickup,
         Delivered,
-        Cancelled,
+        Canceled,
         Confirmed
     }
     public enum PaymentOptions
     {
         Cash,
         Online
+    }
+    public enum FulfillmentType
+    {
+        Delivery = 1,
+        Pickup = 2
     }
     public class Orders
     {
@@ -30,14 +38,17 @@ namespace Med_Map.Models.ordersANDmedicine
         [Required]
         public PaymentOptions PaymentType { get; set; }
         [Required]
+        public FulfillmentType FulfillmentType { get; set; }
+        [Required]
         public Point DeliveryAddress { get; set; }
         [Required]
         [Column(TypeName = "decimal(18,2)")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
         public decimal TotalAmount { get; set; }
         #region foreign keys
-        public string CustomerId { get; set; } 
+        public string CustomerId { get; set; }
 
+        public DateTime DeliveredAt { get; set; }
         [ForeignKey("CustomerId")]
         public Customer Customer { get; set; }
 
