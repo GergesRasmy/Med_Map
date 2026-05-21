@@ -52,6 +52,7 @@ namespace Med_Map.Models.ordersANDmedicine
         [ForeignKey("CustomerId")]
         public Customer Customer { get; set; }
 
+
         public Guid PharmacyProfileId { get; set; }
         [ForeignKey("PharmacyProfileId")]
         public PharmacyProfile Pharmacy { get; set; }

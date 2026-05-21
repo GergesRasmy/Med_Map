@@ -10,6 +10,7 @@ namespace Med_Map.Models.ordersANDmedicine
         [Required]
         [Range(1,10,ErrorMessage ="Amount can't be over 10")]
         public int Quantity { get; set; }
+        public decimal unitPrice { get; set; }
      
 
         #region foreign keys

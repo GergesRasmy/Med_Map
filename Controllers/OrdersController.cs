@@ -35,6 +35,8 @@ namespace Med_Map.Controllers
         #endregion
         [Authorize(Roles = RoleConstants.Names.Customer)]
         [HttpPost("place")]                     //api/order/place
+        [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> createOrder([FromBody] CreateOrderDTO orderDTO)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -85,10 +87,11 @@ namespace Med_Map.Controllers
                 newOrder.OrderItems.Add(new OrderItem
                 {
                     MedicineId = item.medicineId,
-                    Quantity = item.quantity
+                    Quantity = item.quantity,
+                    unitPrice = inventory.Price
                 });
                 inventoryCache[item.medicineId] = inventory;
-                total += item.quantity * medicine.Price;
+                total += item.quantity * inventory.Price;
             }
             newOrder.TotalAmount = total;
             //Save order
@@ -104,15 +107,17 @@ namespace Med_Map.Controllers
             return SuccessResponse(response, "Order created successfully", SuccessCodes.DataCreated);
         }
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
-        [HttpPatch("update-status/{orderId}")]
-        public async Task<IActionResult> UpdateOrderStatus(string orderId, [FromBody] StatusList nextStatus)
+        [HttpPatch("update-status")]         //api/order/update-status
+        [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> UpdateOrderStatus([FromBody] UpdateOrderDTO orderDTO )
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
             if (pharmacy?.ActiveProfile == null)
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
-            var order = await orderRepository.GetOrderByIdAsync(orderId);
+            var order = await orderRepository.GetOrderByIdAsync(orderDTO.orderId);
             if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
             if (order.PharmacyProfileId != pharmacy.ActiveProfile.Id)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
@@ -120,11 +125,14 @@ namespace Med_Map.Controllers
             // Basic transition validation
             var transitions = order.FulfillmentType == FulfillmentType.Delivery ? _deliveryTransitions : _pickupTransitions;
 
+            if (!Enum.TryParse<StatusList>(orderDTO.nextStatus, true, out var nextStatus))
+                return ErrorResponse("Invalid status value", ErrorCodes.InvalidInput);
+
             if (!transitions.TryGetValue(order.Status, out var allowed) || !allowed.Contains(nextStatus))
-                return ErrorResponse($"Cannot transition from {order.Status} to {nextStatus} for a {order.FulfillmentType} order",ErrorCodes.InvalidAction);
+                return ErrorResponse($"Cannot transition from {order.Status} to {orderDTO.nextStatus} for a {order.FulfillmentType} order",ErrorCodes.InvalidAction);
 
             // Update the status
-            order.Status = nextStatus;
+            order.Status =nextStatus;
 
             // If status is Delivered, you might want to set a delivery timestamp
             if (nextStatus == StatusList.Delivered)
@@ -137,6 +145,8 @@ namespace Med_Map.Controllers
         }
         [Authorize]
         [HttpGet("myOrders")]                   //api/order/myOrders
+        [ProducesResponseType(typeof(SuccessResponseDTO<List<OrderResponseDTO>>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> getMyOrders()
         {
             // Extract user ID and role from claims
@@ -162,6 +172,8 @@ namespace Med_Map.Controllers
         }
         [Authorize]
         [HttpGet]                               // api/order?id=
+        [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> GetOrderById([FromQuery]string id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -191,6 +203,8 @@ namespace Med_Map.Controllers
         }
         [Authorize]
         [HttpPatch("cancel/{orderId}")]          // api/order/cancel/{orderId}
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> CancelOrder(string orderId)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -228,7 +242,7 @@ namespace Med_Map.Controllers
                 {
                     MedicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
                     Quantity = oi.Quantity,
-                    UnitPrice = oi.Medicine?.Price ?? 0
+                    UnitPrice = oi.unitPrice
                 }).ToList(),
                 fulfillmentType = order.FulfillmentType.ToString()
                

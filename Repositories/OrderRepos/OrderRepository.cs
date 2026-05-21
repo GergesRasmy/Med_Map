@@ -80,7 +80,6 @@
         }
         public async Task<bool> CancelOrder(string orderId, string userId)
         {
-            // You likely have access to the DbContext here, which is exactly where it belongs!
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -89,8 +88,19 @@
                     .Include(o => o.OrderItems)
                     .FirstOrDefaultAsync(o => o.Id == Guid.Parse(orderId) && o.CustomerId == userId);
 
-                // Validate that order exists and is in a cancellable state
-                if (order == null || order.Status != StatusList.Pending)
+                if (order == null)
+                    return false;
+
+                // Block cancellation on terminal or in-progress states
+                var nonCancellableStatuses = new[]
+                {
+                    StatusList.Delivered,
+                    StatusList.Canceled,
+                    StatusList.OutForDelivery,  // already on the way, too late
+                    StatusList.ReadyForPickup   // already prepared, too late
+                };
+
+                if (nonCancellableStatuses.Contains(order.Status))
                     return false;
 
                 // Restore stock
@@ -99,11 +109,8 @@
                     var inventory = await _context.PharmacyInventory
                         .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == order.PharmacyProfileId
                                                 && pi.MedicineId == item.MedicineId);
-
                     if (inventory != null)
-                    {
                         inventory.StockQuantity += item.Quantity;
-                    }
                 }
 
                 order.Status = StatusList.Canceled;
