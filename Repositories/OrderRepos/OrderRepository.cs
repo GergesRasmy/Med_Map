@@ -9,10 +9,9 @@
             _context = context;
         }
 
-        public async Task InsertAsync(Orders order)
+        public void Insert(Orders order)
         {
             _context.Orders.Add(order);
-            await SaveChangesAsync();
         }
 
         public async Task<List<Orders>?> GetAllOrdersAsync(string id,string role)
@@ -40,7 +39,7 @@
             _context.Orders.Update(order);
             await SaveChangesAsync();
         }
-        public async Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus)
+        public async Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus, DateTime? deliveredAt = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -68,6 +67,9 @@
 
                 order.Status = nextStatus;
 
+                if (deliveredAt.HasValue)
+                    order.DeliveredAt = deliveredAt.Value;
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
@@ -84,9 +86,11 @@
 
             try
             {
+                if (!Guid.TryParse(orderId, out var guid)) return false;
+
                 var order = await _context.Orders
                     .Include(o => o.OrderItems)
-                    .FirstOrDefaultAsync(o => o.Id == Guid.Parse(orderId) && o.CustomerId == userId);
+                    .FirstOrDefaultAsync(o => o.Id == guid && o.CustomerId == userId);
 
                 if (order == null)
                     return false;

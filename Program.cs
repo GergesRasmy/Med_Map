@@ -38,6 +38,7 @@ public partial class Program
         builder.Services.AddScoped<IPharmacyInventoryRepository, PharmacyInventoryRepository>();
         builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
         builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+        builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         #endregion
         #region service registration
         builder.Services.AddScoped<IEmailService, EmailService>();

@@ -2,12 +2,12 @@
 {
     public interface IOrderRepository
     {
-        Task InsertAsync(Orders order);
+        void Insert(Orders order);
         Task<List<Orders>?> GetAllOrdersAsync(string id, string role);
         Task<Orders?> GetOrderByIdAsync(string orderId);
         Task<bool> CancelOrder(string orderId, string userId);
         Task SaveChangesAsync();
-        Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus);
+        Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus, DateTime? deliveredAt);
         Task UpdateAsync(Orders order);
     }
 }
