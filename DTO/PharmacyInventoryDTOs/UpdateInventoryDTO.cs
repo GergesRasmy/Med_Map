@@ -3,7 +3,7 @@ namespace Med_Map.DTO.PharmacyInventoryDTOs
     public class UpdateInventoryDTO
     {
         [Required]
-        public Guid medicineId { get; set; }
+        public Guid batchId { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "Quantity must be a positive number.")]
         public int? quantity { get; set; }

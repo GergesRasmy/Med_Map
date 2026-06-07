@@ -17,7 +17,7 @@ namespace Med_Map.Repositories.PharmacyRepos
             return await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pi =>
                     pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
-                    pi.Id.ToString() == medicineId&&
+                    pi.MedicineId.ToString() == medicineId &&
                     pi.ExpiryDate == expiryDate);
         }
 
@@ -27,9 +27,31 @@ namespace Med_Map.Repositories.PharmacyRepos
                 .Include(pi => pi.Medicine)
                 .Where(pi =>
                     pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
-                    pi.Id.ToString() == medicineId)
-                .OrderBy(pi => pi.ExpiryDate) // FIFO — earliest expiry first
+                    pi.MedicineId.ToString() == medicineId)
+                .OrderBy(pi => pi.ExpiryDate)
                 .ToListAsync();
+        }
+
+        public async Task<PharmacyInventory?> GetBatchByIdAsync(string pharmacyProfileId, Guid batchId)
+        {
+            return await _context.PharmacyInventory
+                .FirstOrDefaultAsync(pi =>
+                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.Id == batchId);
+        }
+
+        public async Task<bool> RemoveBatchByIdAsync(string pharmacyProfileId, Guid batchId)
+        {
+            var batch = await _context.PharmacyInventory
+                .FirstOrDefaultAsync(pi =>
+                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.Id == batchId);
+
+            if (batch == null) return false;
+
+            _context.PharmacyInventory.Remove(batch);
+            await _context.SaveChangesAsync();
+            return true;
         }
         public async Task<PharmacyInventory?> GetPharmacyMedicineAsync(string pharmacyId, Guid medicineId)
         {

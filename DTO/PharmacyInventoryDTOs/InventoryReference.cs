@@ -3,6 +3,6 @@
     public class InventoryReference
     {
         [Required]
-        public Guid MedicineId { get; set; }
+        public Guid batchId { get; set; }
     }
 }

@@ -82,9 +82,9 @@ namespace Med_Map.Controllers
             if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
 
             var existingItem = await pharmacyInventoryRepository
-                .GetPharmacyMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId);
+                .GetBatchByIdAsync(pharmacy.ActiveProfile.Id.ToString(), model.batchId);
             if (existingItem == null)
-                return ErrorResponse("Medicine not found in pharmacy inventory", ErrorCodes.DataNotFound);
+                return ErrorResponse("Batch not found in pharmacy inventory", ErrorCodes.DataNotFound);
 
             //Apply updates
             if (model.quantity.HasValue) existingItem.StockQuantity = model.quantity.Value;
@@ -115,7 +115,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             //remove medicine from inventory
-            var success = await pharmacyInventoryRepository.RemoveMedicineAsync(pharmacy.ActiveProfile.Id.ToString(), model.MedicineId);
+            var success = await pharmacyInventoryRepository.RemoveBatchByIdAsync(pharmacy.ActiveProfile.Id.ToString(), model.batchId);
             if (!success)
                 return ErrorResponse("Medicine not found.", ErrorCodes.DataNotFound);
 
