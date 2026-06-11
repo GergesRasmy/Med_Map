@@ -40,6 +40,7 @@ public partial class Program
         builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+        builder.Services.AddScoped<IWalletTransactionRepository, WalletTransactionRepository>();
         #endregion
         #region service registration
         builder.Services.AddScoped<IEmailService, EmailService>();

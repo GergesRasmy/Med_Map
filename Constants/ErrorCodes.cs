@@ -39,5 +39,10 @@
 
         //payments
         public const string PaymentFailed = "payment_not_initiated";
+
+        //wallet
+        public const string InsufficientBalance = "insufficient_balance";
+        public const string WalletLocked = "wallet_locked";
+        public const string PendingWithdrawalExists = "pending_withdrawal_exists";
     }
 }

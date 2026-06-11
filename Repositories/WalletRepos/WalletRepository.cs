@@ -15,6 +15,11 @@ namespace Med_Map.Repositories.WalletRepos
             await SaveChangesAsync();
         }
 
+        public async Task<Wallet?> GetByIdAsync(Guid walletId)
+        {
+            return await _context.Wallet.FindAsync(walletId);
+        }
+
         public async Task<Wallet?> GetByPharmacyProfileIdAsync(Guid profileId, bool asNoTracking = false)
         {
             var query = _context.Wallet.Where(w => w.PharmacyProfileId == profileId);

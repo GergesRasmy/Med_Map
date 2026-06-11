@@ -22,6 +22,7 @@ namespace Med_Map.Models
         public DbSet<PharmacyInventory> PharmacyInventory { get; set; }
         public DbSet<Recommendation> Recommendation { get; set; }
         public DbSet<Wallet> Wallet { get; set; }
+        public DbSet<WalletTransaction> WalletTransaction { get; set; }
         public DbSet<WithdrawalRequest> WithdrawalRequest { get; set; }
         public DbSet<OtpCode> OtpCodes { get; set; }
         public DbSet<UserSession> UserSession { get; set; }
