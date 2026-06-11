@@ -44,13 +44,12 @@ namespace Med_Map.Controllers
         {
             if (await userManager.Users.AnyAsync(u => u.NormalizedEmail == model.email.ToUpper()))
                 return ErrorResponse("Email already in use.", ErrorCodes.ValidationError);
-            if (await userManager.Users.AnyAsync(u => u.NormalizedUserName == model.userName.ToUpper()))
-                return ErrorResponse("user Name already in use.", ErrorCodes.ValidationError);
             var user = new ApplicationUser
             {
                 Id = Guid.NewGuid().ToString(),
-                UserName = model.userName,
+                UserName = model.email,
                 Email = model.email,
+                displayName = model.displayName,
                 EmailConfirmed = false
             };
             var result = await userManager.CreateAsync(user, model.password);

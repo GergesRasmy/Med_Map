@@ -47,7 +47,7 @@ namespace Med_Map.Controllers
                 ApplicationUserId = userId,
                 User = user,
                 address = model.address,
-                BirthDate = model.birthDate,
+                BirthDate = model.birthDate ?? DateOnly.MinValue,
                 MedicalHistory = model.medicalHistory
             };
             user.IsActive = true;
