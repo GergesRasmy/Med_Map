@@ -63,7 +63,7 @@ namespace Med_Map.Controllers
                 PharmacyProfileId = orderDTO.pharmacyId,
                 DeliveryAddress = location,
                 PaymentType = paymentType,
-                Status = StatusList.Recorded,
+                Status = paymentType == PaymentOptions.Online ? StatusList.Pending : StatusList.Recorded,
                 CreatedAt = DateTime.UtcNow,
                 OrderItems = new List<OrderItem>(),
                 FulfillmentType = fulfillment

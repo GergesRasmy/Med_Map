@@ -167,7 +167,7 @@ namespace Med_Map.Controllers
                 if (success)
                 {
                     payment.Status = PaymentStatus.Paid;
-                    if (order != null) order.Status = StatusList.Confirmed;
+                    if (order != null) order.Status = StatusList.Recorded;
                 }
                 else
                 {
