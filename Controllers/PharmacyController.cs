@@ -20,9 +20,12 @@ namespace Med_Map.Controllers
         private readonly IMedicineRepository medicineRepository;
         private readonly ILogger<PharmacyController> logger;
         private readonly IAccountService accountService;
+        private readonly IWalletRepository walletRepository;
+        private readonly IUnitOfWork unitOfWork;
 
         public PharmacyController(UserManager<ApplicationUser> userManager, IPharmacyRepository pharmacyRepository, IFileService fileService
-                                 ,IOtpService otpService,IMedicineRepository medicineRepository, ILogger<PharmacyController> logger,IAccountService accountService)
+                                 ,IOtpService otpService,IMedicineRepository medicineRepository, ILogger<PharmacyController> logger,IAccountService accountService
+                                 ,IWalletRepository walletRepository, IUnitOfWork unitOfWork)
         {
             this.userManager = userManager;
             this.pharmacyRepository = pharmacyRepository;
@@ -31,6 +34,8 @@ namespace Med_Map.Controllers
             this.medicineRepository = medicineRepository;
             this.logger = logger;
             this.accountService = accountService;
+            this.walletRepository = walletRepository;
+            this.unitOfWork = unitOfWork;
         }
         #endregion
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
@@ -135,12 +140,37 @@ namespace Med_Map.Controllers
             if (user == null)
                 return ErrorResponse("User not found", ErrorCodes.UserNotFound);
 
-            var success = await pharmacyRepository.ActivateProfileAsync(userId);
-            if (!success)
+            var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(userId);
+            if (pharmacy?.PendingProfile == null)
                 return ErrorResponse("No pending profile found to activate.", ErrorCodes.DataNotFound);
 
-            user.IsActive = true;
-            await userManager.UpdateAsync(user);
+            var pendingProfileId = pharmacy.PendingProfile.Id;
+
+            using var transaction = await unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await pharmacyRepository.ActivateProfileAsync(userId);
+
+                var wallet = new Wallet
+                {
+                    PharmacyProfileId = pendingProfileId,
+                    CurrentBalance = 0,
+                    TotalEarnings = 0,
+                    Currency = CurrencyType.EGP
+                };
+                await walletRepository.InsertAsync(wallet);
+
+                user.IsActive = true;
+                await userManager.UpdateAsync(user);
+
+                await unitOfWork.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await unitOfWork.RollbackAsync();
+                logger.LogError(ex, "Profile activation failed for user {UserId}", userId);
+                return ErrorResponse("Activation failed.", ErrorCodes.InternalServerError);
+            }
 
             return SuccessResponse("Pharmacy profile activated successfully.", SuccessCodes.DataUpdated);
         }
