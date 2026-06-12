@@ -56,16 +56,15 @@
         }
         public async Task UpdateAsync(MedicineMaster existing, UpdateMedicineDTO dto)
         {
-            if (dto.tradeName != null)
-                existing.TradeName = dto.tradeName;
-            if (dto.genericName != null)
-                existing.GenericName = dto.genericName;
-            if (dto.price != null)
-                existing.Price = dto.price.Value;
-            if (dto.isRestricted != null)
-                existing.IsRestricted = dto.isRestricted.Value;
-            if (dto.manufacturer != null)
-                existing.Manufacturer = dto.manufacturer;
+            if (dto.tradeName != null) existing.TradeName = dto.tradeName;
+            if (dto.genericName != null) existing.GenericName = dto.genericName;
+            if (dto.price != null) existing.Price = dto.price.Value;
+            if (dto.isRestricted != null) existing.IsRestricted = dto.isRestricted.Value;
+            if (dto.manufacturer != null) existing.Manufacturer = dto.manufacturer;
+            if (dto.dosageForm != null) existing.DosageForm = dto.dosageForm;
+            if (dto.strength != null) existing.Strength = dto.strength;
+            if (dto.route != null) existing.Route = dto.route;
+            if (dto.registrationNo != null) existing.RegistrationNo = dto.registrationNo;
 
             await SaveChangesAsync();
         }

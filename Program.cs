@@ -105,7 +105,10 @@ public partial class Program
             if (app.Environment.IsDevelopment())
             {
                 var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var dbContext   = scope.ServiceProvider.GetRequiredService<Mm_Context>();
+                var env         = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
                 await AdminSeeder.SeedAsync(userManager);
+                await MedicineSeeder.SeedAsync(dbContext, env);
             }
         }
         app.Run();

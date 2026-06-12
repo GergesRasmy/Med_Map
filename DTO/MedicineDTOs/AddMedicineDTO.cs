@@ -5,10 +5,10 @@ namespace Med_Map.DTO.MedicineDTOs
     public class AddMedicineDTO
     {
         [Required]
-        [MaxLength(300, ErrorMessage = "Maximum length is 30")]
+        [MaxLength(300)]
         public string tradeName { get; set; }
         [Required]
-        [MaxLength(300, ErrorMessage = "Maximum length is 30")]
+        [MaxLength(300)]
         public string genericName { get; set; }
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -19,7 +19,15 @@ namespace Med_Map.DTO.MedicineDTOs
         [Required]
         public bool isRestricted { get; set; }
         [Required]
-        [MaxLength(300, ErrorMessage = "Maximum length is 30")]
+        [MaxLength(300)]
         public string manufacturer { get; set; }
+        [MaxLength(100)]
+        public string? dosageForm { get; set; }
+        [MaxLength(100)]
+        public string? strength { get; set; }
+        [MaxLength(50)]
+        public string? route { get; set; }
+        [MaxLength(50)]
+        public string? registrationNo { get; set; }
     }
 }

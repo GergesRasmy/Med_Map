@@ -53,7 +53,11 @@ namespace Med_Map.Controllers
                 Price = medicine.price,
                 IsRestricted = medicine.isRestricted,
                 Manufacturer = medicine.manufacturer,
-                ImageUrl = imagePath
+                ImageUrl = imagePath,
+                DosageForm = medicine.dosageForm,
+                Strength = medicine.strength,
+                Route = medicine.route,
+                RegistrationNo = medicine.registrationNo,
             };
             //Save to Database and Return Response
             try
@@ -198,7 +202,11 @@ namespace Med_Map.Controllers
                 price = medicine.Price,
                 imageURL = medicine.ImageUrl,
                 isRestricted = medicine.IsRestricted,
-                manufacturer = medicine.Manufacturer
+                manufacturer = medicine.Manufacturer,
+                dosageForm = medicine.DosageForm,
+                strength = medicine.Strength,
+                route = medicine.Route,
+                registrationNo = medicine.RegistrationNo,
             };
         }
 
