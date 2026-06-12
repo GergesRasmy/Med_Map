@@ -12,7 +12,6 @@ namespace Med_Map.Models.Payments
     public class Payment
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-        public Guid OrderId { get; set; }
         public string UserId { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
@@ -24,7 +23,7 @@ namespace Med_Map.Models.Payments
         public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        public Orders Order { get; set; }
+        public ICollection<PaymentOrder> PaymentOrders { get; set; } = new List<PaymentOrder>();
         public ICollection<PaymentLog> Logs { get; set; } = new List<PaymentLog>();
     }
 }

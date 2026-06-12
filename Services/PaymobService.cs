@@ -36,13 +36,71 @@ namespace Med_Map.Services
         public bool VerifySignature(string payload, string receivedHmac)
         {
             var secret = _config["Paymob:HmacSecret"]!;
-            var computedHmac = ComputeHmac(payload, secret);
+
+            JsonElement obj;
+            try
+            {
+                var root = JsonSerializer.Deserialize<JsonElement>(payload);
+                obj = root.GetProperty("obj");
+            }
+            catch
+            {
+                _logger.LogWarning("HMAC verification failed: could not parse webhook payload");
+                return false;
+            }
+
+            // Paymob HMAC: extract these 20 fields from obj, already in lexicographic order,
+            // concatenate their string values, then HMAC-SHA512
+            var concatenated = string.Concat(new[]
+            {
+                GetField(obj, "amount_cents"),
+                GetField(obj, "created_at"),
+                GetField(obj, "currency"),
+                GetField(obj, "error_occured"),        // Paymob typo — one 'r'
+                GetField(obj, "has_parent_transaction"),
+                GetField(obj, "id"),
+                GetField(obj, "integration_id"),
+                GetField(obj, "is_3d_secure"),
+                GetField(obj, "is_auth"),
+                GetField(obj, "is_capture"),
+                GetField(obj, "is_refunded"),
+                GetField(obj, "is_standalone_payment"),
+                GetField(obj, "is_voided"),
+                GetNestedField(obj, "order", "id"),
+                GetField(obj, "owner"),
+                GetField(obj, "pending"),
+                GetNestedField(obj, "source_data", "pan"),
+                GetNestedField(obj, "source_data", "sub_type"),
+                GetNestedField(obj, "source_data", "type"),
+                GetField(obj, "success"),
+            });
+
+            var computedHmac = ComputeHmac(concatenated, secret);
             var match = computedHmac.Equals(receivedHmac, StringComparison.OrdinalIgnoreCase);
 
             if (!match)
-                _logger.LogWarning("HMAC mismatch. Expected {Expected}, received {Received}", computedHmac, receivedHmac);
+                _logger.LogWarning("HMAC mismatch. Computed {Expected}, received {Received}", computedHmac, receivedHmac);
 
             return match;
+        }
+
+        private static string GetField(JsonElement element, string key)
+        {
+            if (!element.TryGetProperty(key, out var prop)) return "";
+            return prop.ValueKind switch
+            {
+                JsonValueKind.String => prop.GetString() ?? "",
+                JsonValueKind.True   => "true",
+                JsonValueKind.False  => "false",
+                JsonValueKind.Null   => "",
+                _                    => prop.ToString()
+            };
+        }
+
+        private static string GetNestedField(JsonElement element, string parent, string key)
+        {
+            if (!element.TryGetProperty(parent, out var parentProp)) return "";
+            return GetField(parentProp, key);
         }
 
         private async Task<string> GetAuthTokenAsync()

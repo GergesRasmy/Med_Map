@@ -3,6 +3,7 @@
     public class InitiatePaymentDTO
     {
         [Required]
-        public Guid orderId { get; set; }
+        [MinLength(1, ErrorMessage = "At least one order ID is required")]
+        public List<Guid> orderIds { get; set; }
     }
 }

@@ -12,13 +12,15 @@
         {
             return await _context.Payment
                 .Include(p => p.Logs)
-                .FirstOrDefaultAsync(p => p.OrderId == orderId);
+                .Include(p => p.PaymentOrders)
+                .FirstOrDefaultAsync(p => p.PaymentOrders.Any(po => po.OrderId == orderId));
         }
 
         public async Task<Payment?> GetByProviderOrderIdAsync(string providerOrderId)
         {
             return await _context.Payment
                 .Include(p => p.Logs)
+                .Include(p => p.PaymentOrders).ThenInclude(po => po.Order)
                 .FirstOrDefaultAsync(p => p.ProviderOrderId == providerOrderId);
         }
 

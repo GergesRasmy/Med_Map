@@ -22,15 +22,20 @@ namespace Med_Map.Controllers
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly IPharmacyInventoryRepository pharmacyInventoryRepository;
         private readonly IUnitOfWork unitOfWork;
+        private readonly IWalletRepository walletRepository;
+        private readonly IWalletTransactionRepository walletTransactionRepository;
 
-        public OrdersController(UserManager<ApplicationUser> userManager, IOrderRepository orderRepository, IPharmacyRepository pharmacyRepository
-                                ,IPharmacyInventoryRepository pharmacyInventoryRepository,IUnitOfWork unitOfWork)
+        public OrdersController(UserManager<ApplicationUser> userManager, IOrderRepository orderRepository, IPharmacyRepository pharmacyRepository,
+                                IPharmacyInventoryRepository pharmacyInventoryRepository, IUnitOfWork unitOfWork,
+                                IWalletRepository walletRepository, IWalletTransactionRepository walletTransactionRepository)
         {
             this.userManager = userManager;
             this.orderRepository = orderRepository;
             this.pharmacyRepository = pharmacyRepository;
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
             this.unitOfWork = unitOfWork;
+            this.walletRepository = walletRepository;
+            this.walletTransactionRepository = walletTransactionRepository;
         }
         #endregion
         [Authorize(Roles = RoleConstants.Names.Customer)]
@@ -137,9 +142,16 @@ namespace Med_Map.Controllers
                 return ErrorResponse($"Cannot transition from {order.Status} to {orderDTO.nextStatus} for a {order.FulfillmentType} order",ErrorCodes.InvalidAction);
 
             // Update the status
-            order.Status =nextStatus;
+            order.Status = nextStatus;
+            await orderRepository.UpdateStatusAsync(order.Id, nextStatus, nextStatus == StatusList.Delivered ? DateTime.UtcNow : null);
 
-            await orderRepository.UpdateStatusAsync(order.Id,nextStatus,nextStatus == StatusList.Delivered ? DateTime.UtcNow : null);
+            if (nextStatus == StatusList.Delivered && order.PaymentType == PaymentOptions.Online)
+            {
+                var wallet = await walletRepository.GetByPharmacyProfileIdAsync(order.PharmacyProfileId);
+                if (wallet != null)
+                    await walletTransactionRepository.DepositAsync(wallet.Id, order.TotalAmount, wallet.Currency, order.Id);
+            }
+
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
         }
         [Authorize]

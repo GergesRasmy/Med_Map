@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Text.Json;
@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Med_Map.Controllers
 {
     [Route("api/payments")]
-    [ApiController]//TODO test
+    [ApiController]
     public class PaymentsController : ResponceBaseController
     {
         #region ctor
@@ -15,8 +15,11 @@ namespace Med_Map.Controllers
         private readonly IPaymobService paymobService;
         private readonly ILogger<PaymentsController> logger;
 
-        public PaymentsController(IPaymentRepository paymentRepository, IOrderRepository orderRepository,
-                                   IPaymobService paymobService, ILogger<PaymentsController> logger)
+        public PaymentsController(
+            IPaymentRepository paymentRepository,
+            IOrderRepository orderRepository,
+            IPaymobService paymobService,
+            ILogger<PaymentsController> logger)
         {
             this.paymentRepository = paymentRepository;
             this.orderRepository = orderRepository;
@@ -32,46 +35,56 @@ namespace Med_Map.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            // Validate order exists and belongs to user
-            var order = await orderRepository.GetOrderByIdAsync(model.orderId.ToString());
-            if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
-            if (order.CustomerId != userId) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            if (model.orderIds == null || model.orderIds.Count == 0)
+                return ErrorResponse("At least one order ID is required", ErrorCodes.InvalidInput);
 
-            // Validate order status
-            if (order.Status != StatusList.Pending)
-                return ErrorResponse("Order is already processed", ErrorCodes.InvalidAction);
+            var orders = new List<Orders>();
+            decimal totalAmount = 0;
 
-            // Check for existing payment
-            var existingPayment = await paymentRepository.GetByOrderIdAsync(order.Id);
-            if (existingPayment != null)
+            foreach (var orderId in model.orderIds)
             {
-                if (existingPayment.Status == PaymentStatus.Paid)
-                    return ErrorResponse("Order is already paid", ErrorCodes.InvalidAction);
-                if (existingPayment.Status == PaymentStatus.Pending)
-                    return ErrorResponse("A pending payment already exists for this order", ErrorCodes.InvalidAction);
+                var order = await orderRepository.GetOrderByIdAsync(orderId.ToString());
+                if (order == null)
+                    return ErrorResponse($"Order {orderId} not found", ErrorCodes.DataNotFound);
+                if (order.CustomerId != userId)
+                    return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+                if (order.Status != StatusList.Pending)
+                    return ErrorResponse($"Order {orderId} is already processed", ErrorCodes.InvalidAction);
+                if (order.PaymentType != PaymentOptions.Online)
+                    return ErrorResponse($"Order {orderId} is not an online order", ErrorCodes.InvalidAction);
+
+                var existing = await paymentRepository.GetByOrderIdAsync(orderId);
+                if (existing != null)
+                {
+                    if (existing.Status == PaymentStatus.Paid)
+                        return ErrorResponse($"Order {orderId} is already paid", ErrorCodes.InvalidAction);
+                    if (existing.Status == PaymentStatus.Pending)
+                        return ErrorResponse($"A pending payment already exists for order {orderId}", ErrorCodes.InvalidAction);
+                }
+
+                orders.Add(order);
+                totalAmount += order.TotalAmount;
             }
 
-            // Create payment record
             var payment = new Payment
             {
-                OrderId = order.Id,
                 UserId = userId,
-                Amount = order.TotalAmount,
-                Status = PaymentStatus.Pending
+                Amount = totalAmount,
+                Status = PaymentStatus.Pending,
+                PaymentOrders = orders.Select(o => new PaymentOrder { OrderId = o.Id }).ToList()
             };
             await paymentRepository.AddAsync(payment);
 
-            // Get payment URL from Paymob
             try
             {
-                var (paymentUrl, providerOrderId) = await paymobService.CreatePaymentUrlAsync(order.TotalAmount, payment.Id.ToString());
+                var (paymentUrl, providerOrderId) = await paymobService.CreatePaymentUrlAsync(totalAmount, payment.Id.ToString());
                 payment.ProviderOrderId = providerOrderId;
                 await paymentRepository.SaveChangesAsync();
                 return SuccessResponse(new { paymentUrl }, "Payment initiated successfully", SuccessCodes.DataCreated);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Paymob payment initiation failed for order {OrderId}", order.Id);
+                logger.LogError(ex, "Paymob payment initiation failed for orders {OrderIds}", model.orderIds);
                 return ErrorResponse("Payment initiation failed. Please try again.", ErrorCodes.PaymentFailed);
             }
         }
@@ -83,33 +96,29 @@ namespace Med_Map.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            // Validate order exists and belongs to user
             var order = await orderRepository.GetOrderByIdAsync(orderId.ToString());
             if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
             if (order.CustomerId != userId) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            // Get payment status
             var payment = await paymentRepository.GetByOrderIdAsync(orderId);
             if (payment == null) return ErrorResponse("No payment found for this order", ErrorCodes.DataNotFound);
 
             return SuccessResponse(new
             {
                 orderId,
-                paymentStatus = payment.Status.ToString()
+                paymentStatus = payment.Status.ToString(),
+                orderIds = payment.PaymentOrders.Select(po => po.OrderId)
             }, "Payment status retrieved", SuccessCodes.DataRetrieved);
         }
 
         [HttpPost("webhook")]
         public async Task<IActionResult> Webhook()
         {
-            // Read raw payload
             using var reader = new StreamReader(Request.Body);
             var rawPayload = await reader.ReadToEndAsync();
 
-            // Log immediately
             logger.LogInformation("Paymob webhook received: {Payload}", rawPayload);
 
-            // Verify HMAC signature
             var hmac = Request.Query["hmac"].ToString();
             if (!paymobService.VerifySignature(rawPayload, hmac))
             {
@@ -126,7 +135,6 @@ namespace Med_Map.Controllers
                 var amountCents = obj.GetProperty("amount_cents").GetInt32();
                 var success = obj.GetProperty("success").GetBoolean();
 
-                // Find payment
                 var payment = await paymentRepository.GetByProviderOrderIdAsync(providerOrderId);
                 if (payment == null)
                 {
@@ -134,7 +142,6 @@ namespace Med_Map.Controllers
                     return Ok();
                 }
 
-                // Log the event
                 payment.Logs.Add(new PaymentLog
                 {
                     PaymentId = payment.Id,
@@ -142,7 +149,6 @@ namespace Med_Map.Controllers
                     Payload = rawPayload
                 });
 
-                // Idem potency check to prevent duplicate payments
                 if (payment.Status == PaymentStatus.Paid)
                 {
                     logger.LogInformation("Duplicate webhook received for payment {PaymentId}", payment.Id);
@@ -150,7 +156,6 @@ namespace Med_Map.Controllers
                     return Ok();
                 }
 
-                // Verify amount
                 if (amountCents != (int)(payment.Amount * 100))
                 {
                     logger.LogWarning("Amount mismatch for payment {PaymentId}. Expected {Expected}, got {Actual}",
@@ -159,15 +164,17 @@ namespace Med_Map.Controllers
                     return Ok();
                 }
 
-                // Update payment and order
                 payment.ProviderTransactionId = transactionId;
                 payment.UpdatedAt = DateTime.UtcNow;
 
-                var order = await orderRepository.GetOrderByIdAsync(payment.OrderId.ToString());
                 if (success)
                 {
                     payment.Status = PaymentStatus.Paid;
-                    if (order != null) order.Status = StatusList.Recorded;
+                    foreach (var po in payment.PaymentOrders)
+                    {
+                        if (po.Order == null) continue;
+                        po.Order.Status = StatusList.Recorded;
+                    }
                 }
                 else
                 {

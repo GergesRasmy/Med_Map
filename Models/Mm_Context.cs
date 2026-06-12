@@ -28,6 +28,7 @@ namespace Med_Map.Models
         public DbSet<UserSession> UserSession { get; set; }
         public DbSet<Payment> Payment { get; set; }
         public DbSet<PaymentLog> PaymentLog { get; set; }
+        public DbSet<PaymentOrder> PaymentOrder { get; set; }
 
         #endregion
         #region constructor
@@ -89,7 +90,20 @@ namespace Med_Map.Models
                       .HasForeignKey(p => p.PendingProfileId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
-          
+
+            // 6. PaymentOrder junction table
+            builder.Entity<PaymentOrder>(entity =>
+            {
+                entity.HasKey(po => new { po.PaymentId, po.OrderId });
+                entity.HasOne(po => po.Payment)
+                      .WithMany(p => p.PaymentOrders)
+                      .HasForeignKey(po => po.PaymentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(po => po.Order)
+                      .WithMany()
+                      .HasForeignKey(po => po.OrderId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
         }
         #endregion
 
