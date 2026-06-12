@@ -2,8 +2,8 @@ namespace Med_Map.Seeders
 {
     public static class AdminSeeder
     {
-        private const string AdminEmail = "admin@medmap.dev";
-        private const string AdminPassword = "Admin@123456";
+        private const string AdminEmail       = "admin@g.com";
+        private const string AdminPassword    = "#BBbb123";
         private const string AdminDisplayName = "Admin";
 
         public static async Task SeedAsync(UserManager<ApplicationUser> userManager)
@@ -13,11 +13,12 @@ namespace Med_Map.Seeders
 
             var admin = new ApplicationUser
             {
-                Id = Guid.NewGuid().ToString(),
-                UserName = AdminEmail,
-                Email = AdminEmail,
-                displayName = AdminDisplayName,
+                Id             = Guid.NewGuid().ToString(),
+                UserName       = AdminEmail,
+                Email          = AdminEmail,
+                displayName    = AdminDisplayName,
                 EmailConfirmed = true,
+                IsActive       = true,
             };
 
             var result = await userManager.CreateAsync(admin, AdminPassword);

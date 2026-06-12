@@ -109,6 +109,8 @@ public partial class Program
                 var env         = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
                 await AdminSeeder.SeedAsync(userManager);
                 await MedicineSeeder.SeedAsync(dbContext, env);
+                await CustomerSeeder.SeedAsync(dbContext, userManager);
+                await PharmacySeeder.SeedAsync(dbContext, userManager, env);
             }
         }
         app.Run();

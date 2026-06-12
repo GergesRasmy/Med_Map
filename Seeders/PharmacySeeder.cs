@@ -1,0 +1,138 @@
+using NetTopologySuite;
+
+namespace Med_Map.Seeders
+{
+    public static class PharmacySeeder
+    {
+        private const string Password          = "#BBbb123";
+        private const int    InventoryPerPharm = 8;
+
+        private static readonly (
+            string Email, string DisplayName,
+            string PharmacyName, string LicenseNo,
+            string Address, double Lat, double Lon,
+            string Phone,
+            TimeSpan Opening, TimeSpan Closing,
+            bool Is24Hours, bool HasDelivery,
+            string IdFile, string LicenseFile)[] PharmacyData =
+        {
+            (
+                "p1@g.com", "El-Ezaby Pharmacy",
+                "El-Ezaby Pharmacy", "PH-2024-CAI-001",
+                "12 El Nozha Street, Heliopolis, Cairo", 30.0875, 31.3243,
+                "01012345678",
+                new TimeSpan(8, 0, 0), new TimeSpan(22, 0, 0),
+                false, true,
+                "p1_id.jpg", "p1_license.jpg"
+            ),
+            (
+                "p2@g.com", "Seif Pharmacy",
+                "Seif Pharmacy", "PH-2024-CAI-002",
+                "8 Hassan Sabri Street, Zamalek, Cairo", 30.0622, 31.2214,
+                "01123456789",
+                new TimeSpan(9, 0, 0), new TimeSpan(23, 0, 0),
+                false, false,
+                "p2_id.jpg", "p2_license.jpg"
+            ),
+        };
+
+        public static async Task SeedAsync(Mm_Context context, UserManager<ApplicationUser> userManager, IWebHostEnvironment env)
+        {
+            if (await context.Pharmacy.AnyAsync())
+                return;
+
+            var factory    = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+            var medicines  = await context.MedicineMaster.Take(InventoryPerPharm).ToListAsync();
+            var expiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(2));
+
+            foreach (var p in PharmacyData)
+            {
+                // 1 — ApplicationUser
+                var user = new ApplicationUser
+                {
+                    Id             = Guid.NewGuid().ToString(),
+                    UserName       = p.Email,
+                    Email          = p.Email,
+                    displayName    = p.DisplayName,
+                    EmailConfirmed = true,
+                    IsActive       = true,
+                };
+                var result = await userManager.CreateAsync(user, Password);
+                if (!result.Succeeded)
+                    throw new Exception($"PharmacySeeder: failed to create {p.Email} — {string.Join(", ", result.Errors.Select(e => e.Description))}");
+
+                await userManager.AddToRoleAsync(user, RoleConstants.Names.Pharmacy);
+
+                // 2 — Copy this pharmacy's document images and get their URLs
+                var (idUrl, licenseUrl) = CopyDocuments(env, p.IdFile, p.LicenseFile);
+
+                // 3 — PharmacyProfile with documents and phone in one shot
+                var profile = new PharmacyProfile
+                {
+                    PharmacyName  = p.PharmacyName,
+                    LicenseNumber = p.LicenseNo,
+                    address       = p.Address,
+                    Location      = factory.CreatePoint(new Coordinate(p.Lon, p.Lat)),
+                    OpeningTime   = p.Opening,
+                    ClosingTime   = p.Closing,
+                    Is24Hours     = p.Is24Hours,
+                    HaveDelivary  = p.HasDelivery,
+                    Rating        = 4.5,
+                    Documents = new List<PharmacyDocument>
+                    {
+                        new() { FileUrl = idUrl,      Type = DocumentType.NationalId },
+                        new() { FileUrl = licenseUrl, Type = DocumentType.PharmacyLicense },
+                    },
+                    PhoneNumbers = new List<PharmacyPhoneNumbers>
+                    {
+                        new() { Number = p.Phone },
+                    },
+                };
+
+                context.PharmacyProfile.Add(profile);
+                await context.SaveChangesAsync();
+
+                // 4 — Pharmacy row linking user → active profile
+                context.Pharmacy.Add(new Pharmacy
+                {
+                    ApplicationUserId = user.Id,
+                    ActiveProfileId   = profile.Id,
+                });
+                await context.SaveChangesAsync();
+
+                // 5 — Inventory: first N seeded medicines at their registered price
+                foreach (var med in medicines)
+                {
+                    context.PharmacyInventory.Add(new PharmacyInventory
+                    {
+                        PharmacyProfileId = profile.Id,
+                        MedicineId        = med.Id,
+                        Price             = med.Price,
+                        StockQuantity     = 50,
+                        ExpiryDate        = expiryDate,
+                    });
+                }
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static (string idUrl, string licenseUrl) CopyDocuments(IWebHostEnvironment env, string idFile, string licenseFile)
+        {
+            var dataDir = Path.Combine(AppContext.BaseDirectory, "Seeders", "Data");
+            var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+            var destDir = Path.Combine(webRoot, "uploads", "Pharmacy_Documents");
+            Directory.CreateDirectory(destDir);
+
+            string Copy(string fileName)
+            {
+                var src  = Path.Combine(dataDir, fileName);
+                var dest = Path.Combine(destDir, fileName);
+                if (File.Exists(src) && !File.Exists(dest))
+                    File.Copy(src, dest);
+                return $"/uploads/Pharmacy_Documents/{fileName}";
+            }
+
+            return (Copy(idFile), Copy(licenseFile));
+        }
+    }
+}
