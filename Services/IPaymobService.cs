@@ -2,7 +2,7 @@
 {
     public interface IPaymobService
     {
-        Task<(string paymentUrl, string providerOrderId)> CreatePaymentUrlAsync(decimal amount, string orderId);
+        Task<string> CreateIntentionAsync(decimal amount, string paymentId);
         bool VerifySignature(string payload, string receivedHmac);
     }
 }

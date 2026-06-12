@@ -8,6 +8,14 @@
         {
             this._context = _context;
         }
+        public async Task<Payment?> GetByIdAsync(Guid paymentId)
+        {
+            return await _context.Payment
+                .Include(p => p.Logs)
+                .Include(p => p.PaymentOrders).ThenInclude(po => po.Order)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+        }
+
         public async Task<Payment?> GetByOrderIdAsync(Guid orderId)
         {
             return await _context.Payment

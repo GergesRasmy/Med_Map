@@ -13,17 +13,20 @@ namespace Med_Map.Controllers
         private readonly IPaymentRepository paymentRepository;
         private readonly IOrderRepository orderRepository;
         private readonly IPaymobService paymobService;
+        private readonly IConfiguration configuration;
         private readonly ILogger<PaymentsController> logger;
 
         public PaymentsController(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
             IPaymobService paymobService,
+            IConfiguration configuration,
             ILogger<PaymentsController> logger)
         {
             this.paymentRepository = paymentRepository;
             this.orderRepository = orderRepository;
             this.paymobService = paymobService;
+            this.configuration = configuration;
             this.logger = logger;
         }
         #endregion
@@ -77,14 +80,19 @@ namespace Med_Map.Controllers
 
             try
             {
-                var (paymentUrl, providerOrderId) = await paymobService.CreatePaymentUrlAsync(totalAmount, payment.Id.ToString());
-                payment.ProviderOrderId = providerOrderId;
+                var clientSecret = await paymobService.CreateIntentionAsync(totalAmount, payment.Id.ToString());
+                payment.ProviderOrderId = clientSecret;
                 await paymentRepository.SaveChangesAsync();
-                return SuccessResponse(new { paymentUrl }, "Payment initiated successfully", SuccessCodes.DataCreated);
+
+                return SuccessResponse(new
+                {
+                    clientSecret,
+                    publicKey = configuration["Paymob:PublicKey"]
+                }, "Payment initiated successfully", SuccessCodes.DataCreated);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Paymob payment initiation failed for orders {OrderIds}", model.orderIds);
+                logger.LogError(ex, "Paymob intention creation failed for orders {OrderIds}", model.orderIds);
                 return ErrorResponse("Payment initiation failed. Please try again.", ErrorCodes.PaymentFailed);
             }
         }
@@ -130,15 +138,22 @@ namespace Med_Map.Controllers
             {
                 var payload = JsonSerializer.Deserialize<JsonElement>(rawPayload);
                 var obj = payload.GetProperty("obj");
-                var providerOrderId = obj.GetProperty("order").GetProperty("id").GetInt32().ToString();
                 var transactionId = obj.GetProperty("id").GetInt32().ToString();
                 var amountCents = obj.GetProperty("amount_cents").GetInt32();
                 var success = obj.GetProperty("success").GetBoolean();
 
-                var payment = await paymentRepository.GetByProviderOrderIdAsync(providerOrderId);
+                // Look up our Payment by the special_reference we passed (our internal payment.Id)
+                var merchantRef = obj.GetProperty("order").GetProperty("merchant_order_id").GetString();
+                if (!Guid.TryParse(merchantRef, out var paymentId))
+                {
+                    logger.LogWarning("Webhook merchant_order_id is not a valid GUID: {Ref}", merchantRef);
+                    return Ok();
+                }
+
+                var payment = await paymentRepository.GetByIdAsync(paymentId);
                 if (payment == null)
                 {
-                    logger.LogWarning("Webhook received for unknown provider order {ProviderOrderId}", providerOrderId);
+                    logger.LogWarning("Webhook received for unknown payment {PaymentId}", paymentId);
                     return Ok();
                 }
 
@@ -149,6 +164,7 @@ namespace Med_Map.Controllers
                     Payload = rawPayload
                 });
 
+                // Idempotency — ignore duplicate webhooks
                 if (payment.Status == PaymentStatus.Paid)
                 {
                     logger.LogInformation("Duplicate webhook received for payment {PaymentId}", payment.Id);
