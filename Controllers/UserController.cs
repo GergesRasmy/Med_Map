@@ -160,7 +160,18 @@ namespace Med_Map.Controllers
                     }
                 };
                 return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
-            }// Handle invalid role
+            }
+            else if (role == RoleConstants.Names.Admin)
+            {
+                var Data = new UserDetailsDTO
+                {
+                    id = userId,
+                    role = role,
+                    userName = user.UserName ?? "",
+                    email = user.Email ?? "",
+                };
+                return SuccessResponse(Data, "User retrieved successfully", SuccessCodes.DataRetrieved);
+            }
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
         

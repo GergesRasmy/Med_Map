@@ -27,6 +27,7 @@ global using Med_Map.DTO.CustomerDTOs;
 global using Med_Map.DTO.PharmacyInventoryDTOs;
 global using Med_Map.DTO.WalletDTOs;
 global using Med_Map.Repositories.WalletRepos;
+global using Med_Map.Seeders;
 
 
 

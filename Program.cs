@@ -96,15 +96,16 @@ public partial class Program
         {
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            // Define the roles you need
-            string[] roles = { "Pharmacy", "Customer" };
-
-            foreach (var roleName in roles)
+            foreach (var roleName in RoleConstants.All)
             {
                 if (!await roleManager.RoleExistsAsync(roleName))
-                {
                     await roleManager.CreateAsync(new IdentityRole(roleName));
-                }
+            }
+
+            if (app.Environment.IsDevelopment())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                await AdminSeeder.SeedAsync(userManager);
             }
         }
         app.Run();
