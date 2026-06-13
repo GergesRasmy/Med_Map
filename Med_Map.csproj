@@ -7,9 +7,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Content Include="Seeders\Data\**\*">
+		<Content Update="Seeders\Data\**\*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<None Update="Seeders\Data\*.jpg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 	<ItemGroup>

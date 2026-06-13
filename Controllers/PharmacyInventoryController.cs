@@ -81,10 +81,16 @@ namespace Med_Map.Controllers
             if (pharmacy == null) return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
             if (pharmacy.ActiveProfile == null) return ErrorResponse("Pharmacy has no active profile", ErrorCodes.UserNotFound);
 
+            if (!model.quantity.HasValue && !model.expiryDate.HasValue && !model.price.HasValue)
+                return ErrorResponse("No fields provided to update.", ErrorCodes.ValidationError);
+
             var existingItem = await pharmacyInventoryRepository
                 .GetBatchByIdAsync(pharmacy.ActiveProfile.Id.ToString(), model.batchId);
             if (existingItem == null)
                 return ErrorResponse("Batch not found in pharmacy inventory", ErrorCodes.DataNotFound);
+
+            if (model.expiryDate.HasValue && model.expiryDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
+                return ErrorResponse("Expiry date cannot be in the past.", ErrorCodes.ValidationError);
 
             //Apply updates
             if (model.quantity.HasValue) existingItem.StockQuantity = model.quantity.Value;

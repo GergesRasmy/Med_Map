@@ -23,8 +23,9 @@ namespace Med_Map.Seeders
             var drugs = JsonSerializer.Deserialize<List<JsonElement>>(json);
             if (drugs == null) return;
 
-            var usedRegNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var medicines = new List<MedicineMaster>();
+            var usedTradeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var usedRegNos    = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var medicines     = new List<MedicineMaster>();
 
             foreach (var drug in drugs)
             {
@@ -37,6 +38,7 @@ namespace Med_Map.Seeders
 
                 var tradeName = Str(details, "trade_name");
                 if (string.IsNullOrWhiteSpace(tradeName)) continue;
+                if (!usedTradeNames.Add(tradeName)) continue;
 
                 var genericNames = generics.EnumerateArray()
                     .Select(g => Str(g, "name"))
