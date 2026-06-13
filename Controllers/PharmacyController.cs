@@ -130,6 +130,66 @@ namespace Med_Map.Controllers
         }
 
 
+        [HttpPatch("updateProfile")]            //api/pharmacy/updateProfile
+        [Authorize(Roles = RoleConstants.Names.Pharmacy)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> UpdateProfile([FromBody] PharmacyDirectUpdateDTO model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null || !user.IsActive)
+                return ErrorResponse("Account not active.", ErrorCodes.Unauthorized);
+
+            var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(userId);
+            if (pharmacy?.ActiveProfile == null)
+                return ErrorResponse("No active profile found.", ErrorCodes.DataNotFound);
+
+            if (model.pharmacyPhones != null)
+            {
+                var (validatedPhones, phoneError, phoneErrorCode) = ValidatePhones(model.pharmacyPhones);
+                if (phoneError != null) return ErrorResponse(phoneError, phoneErrorCode!);
+                model.pharmacyPhones = validatedPhones;
+            }
+
+            bool hasSensitiveChanges = model.pharmacyName != null
+                || model.address != null
+                || (model.latitude.HasValue && model.longitude.HasValue);
+
+            bool hasSafeChanges = model.pharmacyPhones != null
+                || model.openingTime.HasValue
+                || model.closingTime.HasValue
+                || model.is24Hours.HasValue
+                || model.deliveryAvailability.HasValue;
+
+            try
+            {
+                if (hasSafeChanges)
+                    await pharmacyRepository.UpdateInstantFieldsAsync(userId, model);
+
+                if (hasSensitiveChanges)
+                {
+                    var pendingProfile = BuildPendingFromActive(pharmacy.ActiveProfile, model);
+                    await pharmacyRepository.SaveToPendingAsync(userId, pendingProfile);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Profile update failed for user {UserId}", userId);
+                return ErrorResponse("An unexpected error occurred.", ErrorCodes.InternalServerError);
+            }
+
+            var message = hasSensitiveChanges
+                ? "Operational fields updated instantly. Name/address/location changes are pending admin approval."
+                : "Profile updated successfully.";
+
+            return SuccessResponse(message, SuccessCodes.DataUpdated);
+        }
+
+
+
         [HttpPost("activateProfile")]         //api/pharmacy/activateProfile?userId={userId}
         //[Authorize(Roles = RoleConstants.Names.Admin)]
         [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
@@ -340,6 +400,33 @@ namespace Med_Map.Controllers
                 licenseNumber = profile.LicenseNumber,
                 licenseImageUrls = licenseUrls,
                 nationalIdUrls = nationalIdUrls
+            };
+        }
+
+        // Clones the active profile and applies sensitive field changes for pending review
+        private PharmacyProfile BuildPendingFromActive(PharmacyProfile active, PharmacyDirectUpdateDTO model)
+        {
+            Point location = active.Location;
+            if (model.latitude.HasValue && model.longitude.HasValue)
+                location = new Point(model.longitude.Value, model.latitude.Value) { SRID = 4326 };
+
+            var phones = (model.pharmacyPhones != null && model.pharmacyPhones.Count > 0)
+                ? model.pharmacyPhones
+                : active.PhoneNumbers.Select(p => p.Number).ToList();
+
+            return new PharmacyProfile
+            {
+                PharmacyName = model.pharmacyName ?? active.PharmacyName,
+                address = model.address ?? active.address,
+                Location = location,
+                LicenseNumber = active.LicenseNumber,
+                HaveDelivary = model.deliveryAvailability ?? active.HaveDelivary,
+                Is24Hours = model.is24Hours ?? active.Is24Hours,
+                OpeningTime = model.openingTime ?? active.OpeningTime,
+                ClosingTime = model.closingTime ?? active.ClosingTime,
+                Rating = active.Rating,
+                Documents = active.Documents.Select(d => new PharmacyDocument { FileUrl = d.FileUrl, Type = d.Type }).ToList(),
+                PhoneNumbers = phones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()
             };
         }
 

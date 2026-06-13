@@ -78,22 +78,29 @@ namespace Med_Map.Repositories.PharmacyRepos
             await _context.Pharmacy.AddAsync(pharmacy);
             await _context.SaveChangesAsync();
         }
-        public async Task UpdateInstantFieldsAsync(string userId, PharmacyUpdateDTO model)
+        public async Task UpdateInstantFieldsAsync(string userId, PharmacyDirectUpdateDTO model)
         {
             var pharmacy = await _context.Pharmacy
                 .Include(p => p.ActiveProfile)
+                    .ThenInclude(ap => ap!.PhoneNumbers)
                 .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
 
             if (pharmacy?.ActiveProfile == null) return;
 
-            if (model.deliveryAvailability.HasValue)
-                pharmacy.ActiveProfile.HaveDelivary = model.deliveryAvailability.Value;
-            if (model.is24Hours.HasValue)
-                pharmacy.ActiveProfile.Is24Hours = model.is24Hours.Value;
-            if (model.openingTime.HasValue)
-                pharmacy.ActiveProfile.OpeningTime = model.openingTime.Value;
-            if (model.closingTime.HasValue)
-                pharmacy.ActiveProfile.ClosingTime = model.closingTime.Value;
+            var profile = pharmacy.ActiveProfile;
+
+            if (model.deliveryAvailability.HasValue) profile.HaveDelivary = model.deliveryAvailability.Value;
+            if (model.is24Hours.HasValue) profile.Is24Hours = model.is24Hours.Value;
+            if (model.openingTime.HasValue) profile.OpeningTime = model.openingTime.Value;
+            if (model.closingTime.HasValue) profile.ClosingTime = model.closingTime.Value;
+
+            if (model.pharmacyPhones != null && model.pharmacyPhones.Count > 0)
+            {
+                _context.Set<PharmacyPhoneNumbers>().RemoveRange(profile.PhoneNumbers);
+                profile.PhoneNumbers = model.pharmacyPhones
+                    .Select(p => new PharmacyPhoneNumbers { Number = p })
+                    .ToList();
+            }
 
             await _context.SaveChangesAsync();
         }
