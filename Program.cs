@@ -47,10 +47,7 @@ public partial class Program
         builder.Services.AddScoped<IFileService, FileService>();
         builder.Services.AddScoped<IOtpService, OtpService>();
         builder.Services.AddScoped<IAccountService, AccountService>();
-        builder.Services.AddHttpClient<IPaymobService, PaymobService>(client =>
-        {
-            client.DefaultRequestHeaders.Add("Authorization", $"Token {builder.Configuration["Paymob:SecretKey"]}");
-        });
+        builder.Services.AddScoped<IKashierService, KashierService>();
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {

@@ -41,26 +41,36 @@ namespace Med_Map.Repositories.WalletRepos
             return await query.FirstOrDefaultAsync();
         }
 
-        public async Task<List<WalletTransaction>> GetByWalletIdAsync(Guid walletId, int page, int pageSize = 20)
+        public async Task<(List<WalletTransaction> items, int totalCount)> GetByWalletIdAsync(Guid walletId, int page, int pageSize = 20)
         {
-            return await _context.WalletTransaction
+            var query = _context.WalletTransaction
                 .AsNoTracking()
-                .Where(t => t.WalletId == walletId)
+                .Where(t => t.WalletId == walletId);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
 
-        public async Task<List<WalletTransaction>> GetPendingWithdrawalsAsync(int page, int pageSize = 20)
+        public async Task<(List<WalletTransaction> items, int totalCount)> GetPendingWithdrawalsAsync(int page, int pageSize = 20)
         {
-            return await _context.WalletTransaction
+            var query = _context.WalletTransaction
                 .AsNoTracking()
-                .Where(t => t.Type == TransactionType.Withdrawal && t.Status == TransactionStatus.Pending)
+                .Where(t => t.Type == TransactionType.Withdrawal && t.Status == TransactionStatus.Pending);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
                 .OrderBy(t => t.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
 
         public async Task<bool> HasPendingWithdrawalAsync(Guid walletId)

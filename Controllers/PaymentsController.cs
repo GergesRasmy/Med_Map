@@ -12,20 +12,20 @@ namespace Med_Map.Controllers
         #region ctor
         private readonly IPaymentRepository paymentRepository;
         private readonly IOrderRepository orderRepository;
-        private readonly IPaymobService paymobService;
+        private readonly IKashierService kashierService;
         private readonly IConfiguration configuration;
         private readonly ILogger<PaymentsController> logger;
 
         public PaymentsController(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
-            IPaymobService paymobService,
+            IKashierService kashierService,
             IConfiguration configuration,
             ILogger<PaymentsController> logger)
         {
             this.paymentRepository = paymentRepository;
             this.orderRepository = orderRepository;
-            this.paymobService = paymobService;
+            this.kashierService = kashierService;
             this.configuration = configuration;
             this.logger = logger;
         }
@@ -73,6 +73,7 @@ namespace Med_Map.Controllers
             {
                 UserId = userId,
                 Amount = totalAmount,
+                PaymentProvider = "Kashier",
                 Status = PaymentStatus.Pending,
                 PaymentOrders = orders.Select(o => new PaymentOrder { OrderId = o.Id }).ToList()
             };
@@ -80,19 +81,19 @@ namespace Med_Map.Controllers
 
             try
             {
-                var clientSecret = await paymobService.CreateIntentionAsync(totalAmount, payment.Id.ToString());
-                payment.ProviderOrderId = clientSecret;
+                // We pass our internal Payment.Id as Kashier's orderId so the webhook can find it again.
+                var paymentUrl = kashierService.BuildPaymentUrl(totalAmount, payment.Id.ToString());
+                payment.ProviderOrderId = payment.Id.ToString();
                 await paymentRepository.SaveChangesAsync();
 
                 return SuccessResponse(new
                 {
-                    clientSecret,
-                    publicKey = configuration["Paymob:PublicKey"]
+                    paymentUrl
                 }, "Payment initiated successfully", SuccessCodes.DataCreated);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Paymob intention creation failed for orders {OrderIds}", model.orderIds);
+                logger.LogError(ex, "Kashier payment URL creation failed for orders {OrderIds}", model.orderIds);
                 return ErrorResponse("Payment initiation failed. Please try again.", ErrorCodes.PaymentFailed);
             }
         }
@@ -125,28 +126,36 @@ namespace Med_Map.Controllers
             using var reader = new StreamReader(Request.Body);
             var rawPayload = await reader.ReadToEndAsync();
 
-            logger.LogInformation("Paymob webhook received: {Payload}", rawPayload);
+            logger.LogInformation("Kashier webhook received: {Payload}", rawPayload);
 
-            var hmac = Request.Query["hmac"].ToString();
-            if (!paymobService.VerifySignature(rawPayload, hmac))
+            // Kashier posts { "event": "...", "data": { ... , "signatureKeys": [...], "signature": "..." } }
+            JsonElement data;
+            try
             {
-                logger.LogWarning("Paymob webhook signature verification failed");
+                var root = JsonSerializer.Deserialize<JsonElement>(rawPayload);
+                data = root.TryGetProperty("data", out var d) ? d : root;
+            }
+            catch
+            {
+                logger.LogWarning("Kashier webhook: could not parse payload");
+                return Ok();
+            }
+
+            if (!kashierService.VerifyWebhookSignature(data))
+            {
+                logger.LogWarning("Kashier webhook signature verification failed");
                 return Ok();
             }
 
             try
             {
-                var payload = JsonSerializer.Deserialize<JsonElement>(rawPayload);
-                var obj = payload.GetProperty("obj");
-                var transactionId = obj.GetProperty("id").GetInt32().ToString();
-                var amountCents = obj.GetProperty("amount_cents").GetInt32();
-                var success = obj.GetProperty("success").GetBoolean();
-
-                // Look up our Payment by the special_reference we passed (our internal payment.Id)
-                var merchantRef = obj.GetProperty("order").GetProperty("merchant_order_id").GetString();
+                // We sent Payment.Id as the orderId; Kashier echoes it back as merchantOrderId.
+                var merchantRef = data.TryGetProperty("merchantOrderId", out var m) ? m.GetString()
+                                : data.TryGetProperty("orderId", out var o) ? o.GetString()
+                                : null;
                 if (!Guid.TryParse(merchantRef, out var paymentId))
                 {
-                    logger.LogWarning("Webhook merchant_order_id is not a valid GUID: {Ref}", merchantRef);
+                    logger.LogWarning("Kashier webhook merchant reference is not a valid GUID: {Ref}", merchantRef);
                     return Ok();
                 }
 
@@ -156,6 +165,13 @@ namespace Med_Map.Controllers
                     logger.LogWarning("Webhook received for unknown payment {PaymentId}", paymentId);
                     return Ok();
                 }
+
+                var statusStr = data.TryGetProperty("status", out var s) ? s.GetString()
+                              : data.TryGetProperty("paymentStatus", out var ps) ? ps.GetString()
+                              : null;
+                var success = string.Equals(statusStr, "SUCCESS", StringComparison.OrdinalIgnoreCase);
+
+                var transactionId = data.TryGetProperty("transactionId", out var t) ? t.GetString() : null;
 
                 payment.Logs.Add(new PaymentLog
                 {
@@ -172,10 +188,20 @@ namespace Med_Map.Controllers
                     return Ok();
                 }
 
-                if (amountCents != (int)(payment.Amount * 100))
+                // Verify the paid amount matches what we recorded.
+                decimal paidAmount = 0;
+                if (data.TryGetProperty("amount", out var a))
+                {
+                    paidAmount = a.ValueKind == JsonValueKind.Number
+                        ? a.GetDecimal()
+                        : decimal.TryParse(a.GetString(), System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var pa) ? pa : 0;
+                }
+
+                if (success && paidAmount != payment.Amount)
                 {
                     logger.LogWarning("Amount mismatch for payment {PaymentId}. Expected {Expected}, got {Actual}",
-                        payment.Id, (int)(payment.Amount * 100), amountCents);
+                        payment.Id, payment.Amount, paidAmount);
                     await paymentRepository.SaveChangesAsync();
                     return Ok();
                 }

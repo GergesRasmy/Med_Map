@@ -24,11 +24,20 @@ namespace Med_Map.Controllers
         }
 
         [HttpGet("withdrawals")]
-        [ProducesResponseType(typeof(SuccessResponseDTO<List<WalletTransactionDTO>>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<WalletTransactionDTO>>), 200)]
         public async Task<IActionResult> GetPendingWithdrawals([FromQuery] int page = 1)
         {
-            var transactions = await transactionRepository.GetPendingWithdrawalsAsync(page);
-            return SuccessResponse(transactions.Select(MapToDTO).ToList(), "Pending withdrawals retrieved.", SuccessCodes.DataRetrieved);
+            const int pageSize = 20;
+            var (items, totalCount) = await transactionRepository.GetPendingWithdrawalsAsync(page, pageSize);
+            var result = new PagedDTO<WalletTransactionDTO>
+            {
+                items = items.Select(MapToDTO).ToList(),
+                totalCount = totalCount,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            };
+            return SuccessResponse(result, "Pending withdrawals retrieved.", SuccessCodes.DataRetrieved);
         }
 
         [HttpPatch("withdrawals/{id}/complete")]

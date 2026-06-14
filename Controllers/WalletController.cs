@@ -101,15 +101,24 @@ namespace Med_Map.Controllers
         }
 
         [HttpGet("transactions")]
-        [ProducesResponseType(typeof(SuccessResponseDTO<List<WalletTransactionDTO>>), 200)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<WalletTransactionDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> GetTransactions([FromQuery] int page = 1)
         {
             var (wallet, error) = await ResolveWalletAsync();
             if (error != null) return error;
 
-            var transactions = await transactionRepository.GetByWalletIdAsync(wallet!.Id, page);
-            return SuccessResponse(transactions.Select(MapTransactionToDTO).ToList(), "Transactions retrieved.", SuccessCodes.DataRetrieved);
+            const int pageSize = 20;
+            var (items, totalCount) = await transactionRepository.GetByWalletIdAsync(wallet!.Id, page, pageSize);
+            var result = new PagedDTO<WalletTransactionDTO>
+            {
+                items = items.Select(MapTransactionToDTO).ToList(),
+                totalCount = totalCount,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            };
+            return SuccessResponse(result, "Transactions retrieved.", SuccessCodes.DataRetrieved);
         }
 
         [HttpPost("withdraw")]
