@@ -164,6 +164,45 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(response, "Inventory retrieved successfully", SuccessCodes.DataRetrieved);
         }
+        [AllowAnonymous]
+        [HttpGet("search")]              // GET /api/pharmacyInventory/search?query=amox&pharmacyId=&page=1
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<InventorySearchResultDTO>>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> SearchInventory(
+            [FromQuery] string query,
+            [FromQuery] string? pharmacyId = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return ErrorResponse("Search query is required.", ErrorCodes.ValidationError);
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
+
+            var (items, totalCount) = await pharmacyInventoryRepository.SearchInventoryAsync(query.Trim(), pharmacyId, page, pageSize);
+
+            var response = new PagedDTO<InventorySearchResultDTO>
+            {
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                totalCount = totalCount,
+                items = items.Select(pi => new InventorySearchResultDTO
+                {
+                    pharmacyId = pi.PharmacyUserId,
+                    pharmacyName = pi.Pharmacy?.ActiveProfile?.PharmacyName ?? string.Empty,
+                    medicineId = pi.MedicineId,
+                    tradeName = pi.Medicine?.TradeName ?? string.Empty,
+                    genericName = pi.Medicine?.GenericName ?? string.Empty,
+                    price = pi.Price,
+                    stock = pi.StockQuantity,
+                    expiryDate = pi.ExpiryDate
+                }).ToList()
+            };
+
+            return SuccessResponse(response, "Search results retrieved.", SuccessCodes.DataRetrieved);
+        }
+
         [HttpGet("viewMedicineBatches/{medicineId}")]   // api/pharmacyInventory/viewMedicineBatches/42
         [ProducesResponseType(typeof(SuccessResponseDTO<MedicineBatchesResponseDTO>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]

@@ -11,6 +11,7 @@
         Task<List<PharmacyInventory>> GetMedicineBatchesAsync(string pharmacyUserId, string medicineId);
         Task<PharmacyInventory?> GetBatchByIdAsync(string pharmacyUserId, Guid batchId);
         Task<bool> RemoveBatchByIdAsync(string pharmacyUserId, Guid batchId);
+        Task<(List<PharmacyInventory> items, int totalCount)> SearchInventoryAsync(string term, string? pharmacyUserId, int page, int pageSize);
 
     }
 }

@@ -91,6 +91,33 @@ namespace Med_Map.Repositories.PharmacyRepos
 
             return (items, totalCount);
         }
+        public async Task<(List<PharmacyInventory> items, int totalCount)> SearchInventoryAsync(string term, string? pharmacyUserId, int page, int pageSize)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var query = _context.PharmacyInventory
+                .AsNoTracking()
+                .Include(pi => pi.Medicine)
+                .Include(pi => pi.Pharmacy).ThenInclude(p => p.ActiveProfile)
+                .Where(pi =>
+                    pi.StockQuantity > 0 &&
+                    pi.ExpiryDate > today &&
+                    pi.Pharmacy.ActiveProfileId != null &&
+                    (EF.Functions.Like(pi.Medicine.TradeName, $"%{term}%") ||
+                     EF.Functions.Like(pi.Medicine.GenericName, $"%{term}%")));
+
+            if (pharmacyUserId != null)
+                query = query.Where(pi => pi.PharmacyUserId == pharmacyUserId);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderBy(pi => pi.Price)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
