@@ -17,5 +17,9 @@ namespace Med_Map.DTO.PharmacyDTOs
         public TimeSpan? closingTime { get; set; }
         public bool? is24Hours { get; set; }
         public bool? deliveryAvailability { get; set; }
+        [Range(0, double.MaxValue)]
+        public decimal? deliveryFee { get; set; }
+        [Range(0, double.MaxValue)]
+        public double? deliveryRadiusKm { get; set; }
     }
 }

@@ -14,6 +14,7 @@ namespace Med_Map.Seeders
             string Phone,
             TimeSpan Opening, TimeSpan Closing,
             bool Is24Hours, bool HasDelivery,
+            decimal DeliveryFee, double DeliveryRadiusKm,
             string IdFile, string LicenseFile)[] PharmacyData =
         {
             (
@@ -23,6 +24,7 @@ namespace Med_Map.Seeders
                 "01012345678",
                 new TimeSpan(8, 0, 0), new TimeSpan(22, 0, 0),
                 false, true,
+                15m, 5.0,
                 "p1_id.jpg", "p1_license.jpg"
             ),
             (
@@ -32,6 +34,7 @@ namespace Med_Map.Seeders
                 "01123456789",
                 new TimeSpan(9, 0, 0), new TimeSpan(23, 0, 0),
                 false, false,
+                0m, 0.0,
                 "p2_id.jpg", "p2_license.jpg"
             ),
         };
@@ -75,9 +78,11 @@ namespace Med_Map.Seeders
                     Location      = factory.CreatePoint(new Coordinate(p.Lon, p.Lat)),
                     OpeningTime   = p.Opening,
                     ClosingTime   = p.Closing,
-                    Is24Hours     = p.Is24Hours,
-                    HaveDelivary  = p.HasDelivery,
-                    Rating        = 4.5,
+                    Is24Hours        = p.Is24Hours,
+                    HaveDelivary     = p.HasDelivery,
+                    DeliveryFee      = p.DeliveryFee,
+                    DeliveryRadiusKm = p.DeliveryRadiusKm,
+                    Rating           = 4.5,
                     Documents = new List<PharmacyDocument>
                     {
                         new() { FileUrl = idUrl,      Type = DocumentType.NationalId },
@@ -97,6 +102,16 @@ namespace Med_Map.Seeders
                 {
                     ApplicationUserId = user.Id,
                     ActiveProfileId   = profile.Id,
+                });
+                await context.SaveChangesAsync();
+
+                // 4b — Wallet (mirrors what activateProfile endpoint does)
+                context.Wallet.Add(new Wallet
+                {
+                    PharmacyProfileId = profile.Id,
+                    CurrentBalance    = 0,
+                    TotalEarnings     = 0,
+                    Currency          = CurrencyType.EGP,
                 });
                 await context.SaveChangesAsync();
 

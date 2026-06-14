@@ -11,6 +11,8 @@
         public TimeSpan closingTime { get; set; }
         public bool is24Hours { get; set; }
         public bool deliveryAvailability { get; set; }
+        public decimal deliveryFee { get; set; }
+        public double deliveryRadiusKm { get; set; }
         public string licenseNumber { get; set; }
         public List<string> licenseImageUrls { get; set; } = new();
         public List<string> nationalIdUrls { get; set; } = new();

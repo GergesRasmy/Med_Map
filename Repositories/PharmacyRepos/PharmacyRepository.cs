@@ -94,12 +94,20 @@ namespace Med_Map.Repositories.PharmacyRepos
             if (model.openingTime.HasValue) profile.OpeningTime = model.openingTime.Value;
             if (model.closingTime.HasValue) profile.ClosingTime = model.closingTime.Value;
 
+            if (model.deliveryFee.HasValue) profile.DeliveryFee = model.deliveryFee.Value;
+            if (model.deliveryRadiusKm.HasValue) profile.DeliveryRadiusKm = model.deliveryRadiusKm.Value;
+
             if (model.pharmacyPhones != null && model.pharmacyPhones.Count > 0)
             {
                 _context.Set<PharmacyPhoneNumbers>().RemoveRange(profile.PhoneNumbers);
-                profile.PhoneNumbers = model.pharmacyPhones
-                    .Select(p => new PharmacyPhoneNumbers { Number = p })
-                    .ToList();
+                await _context.SaveChangesAsync(); // flush deletions before inserting new phones
+
+                foreach (var number in model.pharmacyPhones)
+                    _context.Set<PharmacyPhoneNumbers>().Add(new PharmacyPhoneNumbers
+                    {
+                        Number = number,
+                        PharmacyProfileId = profile.Id
+                    });
             }
 
             await _context.SaveChangesAsync();

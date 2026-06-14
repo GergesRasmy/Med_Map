@@ -25,6 +25,10 @@
         public bool is24Hours { get; set; }
         [Required]
         public bool deliveryAvailability { get; set; }
+        [Range(0, double.MaxValue)]
+        public decimal deliveryFee { get; set; } = 0;
+        [Range(0, double.MaxValue)]
+        public double deliveryRadiusKm { get; set; } = 0;
         [Required]
         public List<string> pharmacyPhones { get; set; } = new();
         [Required]

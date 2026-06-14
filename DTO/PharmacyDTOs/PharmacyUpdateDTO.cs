@@ -16,6 +16,10 @@
         public TimeSpan? closingTime { get; set; }
         public bool? is24Hours { get; set; }
         public bool? deliveryAvailability { get; set; }
+        [Range(0, double.MaxValue)]
+        public decimal? deliveryFee { get; set; }
+        [Range(0, double.MaxValue)]
+        public double? deliveryRadiusKm { get; set; }
         public List<string>? pharmacyPhones { get; set; }
         public List<IFormFile>? nationalIds { get; set; }
         public List<IFormFile>? licenseImages { get; set; }

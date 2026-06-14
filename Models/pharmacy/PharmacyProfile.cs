@@ -31,6 +31,12 @@
         [Range(0, 5, ErrorMessage = "Rating must be between 0 and 5")]
         public double Rating { get; set; }
 
+        [Range(0, double.MaxValue, ErrorMessage = "Delivery fee must be a positive value")]
+        public decimal DeliveryFee { get; set; } = 0;
+
+        [Range(0, double.MaxValue, ErrorMessage = "Delivery radius must be a positive value")]
+        public double DeliveryRadiusKm { get; set; } = 0;
+
         public ICollection<PharmacyDocument> Documents { get; set; } = new List<PharmacyDocument>();
         public ICollection<PharmacyPhoneNumbers> PhoneNumbers { get; set; } = new List<PharmacyPhoneNumbers>();
     }

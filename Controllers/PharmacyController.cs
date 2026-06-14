@@ -353,7 +353,9 @@ namespace Med_Map.Controllers
                 openingTime = phar.ActiveProfile.OpeningTime,
                 closingTime = phar.ActiveProfile.ClosingTime,
                 is24Hours = phar.ActiveProfile.Is24Hours,
-                deliveryAvailability = phar.ActiveProfile.HaveDelivary
+                deliveryAvailability = phar.ActiveProfile.HaveDelivary,
+                deliveryFee = phar.ActiveProfile.DeliveryFee,
+                deliveryRadiusKm = phar.ActiveProfile.DeliveryRadiusKm
             };
         }
 
@@ -397,6 +399,8 @@ namespace Med_Map.Controllers
                 closingTime = profile.ClosingTime,
                 is24Hours = profile.Is24Hours,
                 deliveryAvailability = profile.HaveDelivary,
+                deliveryFee = profile.DeliveryFee,
+                deliveryRadiusKm = profile.DeliveryRadiusKm,
                 licenseNumber = profile.LicenseNumber,
                 licenseImageUrls = licenseUrls,
                 nationalIdUrls = nationalIdUrls
@@ -424,6 +428,8 @@ namespace Med_Map.Controllers
                 Is24Hours = model.is24Hours ?? active.Is24Hours,
                 OpeningTime = model.openingTime ?? active.OpeningTime,
                 ClosingTime = model.closingTime ?? active.ClosingTime,
+                DeliveryFee = model.deliveryFee ?? active.DeliveryFee,
+                DeliveryRadiusKm = model.deliveryRadiusKm ?? active.DeliveryRadiusKm,
                 Rating = active.Rating,
                 Documents = active.Documents.Select(d => new PharmacyDocument { FileUrl = d.FileUrl, Type = d.Type }).ToList(),
                 PhoneNumbers = phones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()
@@ -453,6 +459,8 @@ namespace Med_Map.Controllers
                 Is24Hours = model.is24Hours,
                 OpeningTime = model.openingTime,
                 ClosingTime = model.closingTime,
+                DeliveryFee = model.deliveryFee,
+                DeliveryRadiusKm = model.deliveryRadiusKm,
                 Documents = documents,
                 PhoneNumbers = validatedPhones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()
             };
@@ -485,6 +493,8 @@ namespace Med_Map.Controllers
                 Is24Hours = model.is24Hours ?? existing.Is24Hours,
                 OpeningTime = model.openingTime ?? existing.OpeningTime,
                 ClosingTime = model.closingTime ?? existing.ClosingTime,
+                DeliveryFee = model.deliveryFee ?? existing.DeliveryFee,
+                DeliveryRadiusKm = model.deliveryRadiusKm ?? existing.DeliveryRadiusKm,
                 Documents = documents, // These are now clean instances
                 PhoneNumbers = validatedPhones.Count > 0
                     ? validatedPhones.Select(p => new PharmacyPhoneNumbers { Number = p }).ToList()

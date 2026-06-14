@@ -1,4 +1,5 @@
-﻿using Med_Map.DTO.CustomerDTOs;
+﻿using Med_Map.DTO.AccountDTOs;
+using Med_Map.DTO.CustomerDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -174,6 +175,24 @@ namespace Med_Map.Controllers
             }
             else return ErrorResponse("Invalid role", ErrorCodes.Unauthorized);
         }
-        
+
+        [Authorize]
+        [HttpPatch("changePassword")]        //api/user/changePassword
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> changePassword([FromBody] ChangePasswordDTO model)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return ErrorResponse("Invalid token.", ErrorCodes.InvalidCredentials);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found.", ErrorCodes.UserNotFound);
+
+            var result = await userManager.ChangePasswordAsync(user, model.currentPassword, model.newPassword);
+            if (!result.Succeeded)
+                return ErrorResponse("Current password is incorrect.", ErrorCodes.InvalidCredentials);
+
+            return SuccessResponse<object>(null, "Password updated successfully.", SuccessCodes.DataUpdated);
+        }
     }
 }

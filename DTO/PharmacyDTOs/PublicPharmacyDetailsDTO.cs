@@ -16,6 +16,7 @@
         public TimeSpan closingTime { get; set; }
         public bool is24Hours { get; set; }
         public bool deliveryAvailability { get; set; }
-        
+        public decimal deliveryFee { get; set; }
+        public double deliveryRadiusKm { get; set; }
     }
 }
