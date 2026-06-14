@@ -20,9 +20,9 @@ namespace Med_Map.Repositories.WalletRepos
             return await _context.Wallet.FindAsync(walletId);
         }
 
-        public async Task<Wallet?> GetByPharmacyProfileIdAsync(Guid profileId, bool asNoTracking = false)
+        public async Task<Wallet?> GetByPharmacyUserIdAsync(string pharmacyUserId, bool asNoTracking = false)
         {
-            var query = _context.Wallet.Where(w => w.PharmacyProfileId == profileId);
+            var query = _context.Wallet.Where(w => w.PharmacyUserId == pharmacyUserId);
             if (asNoTracking)
                 query = query.AsNoTracking();
             return await query.FirstOrDefaultAsync();

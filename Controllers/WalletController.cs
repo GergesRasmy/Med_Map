@@ -195,7 +195,7 @@ namespace Med_Map.Controllers
             if (pharmacy?.ActiveProfile == null)
                 return (null, ErrorResponse("Pharmacy has no active profile.", ErrorCodes.CompleteRegistration));
 
-            var wallet = await walletRepository.GetByPharmacyProfileIdAsync(pharmacy.ActiveProfile.Id);
+            var wallet = await walletRepository.GetByPharmacyUserIdAsync(userId);
             if (wallet == null)
                 return (null, ErrorResponse("Wallet not found.", ErrorCodes.DataNotFound));
 

@@ -108,10 +108,10 @@ namespace Med_Map.Seeders
                 // 4b — Wallet (mirrors what activateProfile endpoint does)
                 context.Wallet.Add(new Wallet
                 {
-                    PharmacyProfileId = profile.Id,
-                    CurrentBalance    = 0,
-                    TotalEarnings     = 0,
-                    Currency          = CurrencyType.EGP,
+                    PharmacyUserId = user.Id,
+                    CurrentBalance = 0,
+                    TotalEarnings  = 0,
+                    Currency       = CurrencyType.EGP,
                 });
                 await context.SaveChangesAsync();
 
@@ -120,8 +120,8 @@ namespace Med_Map.Seeders
                 {
                     context.PharmacyInventory.Add(new PharmacyInventory
                     {
-                        PharmacyProfileId = profile.Id,
-                        MedicineId        = med.Id,
+                        PharmacyUserId = user.Id,
+                        MedicineId     = med.Id,
                         Price             = med.Price,
                         StockQuantity     = 50,
                         ExpiryDate        = expiryDate,

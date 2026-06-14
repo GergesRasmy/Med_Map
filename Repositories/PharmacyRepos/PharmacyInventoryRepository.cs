@@ -12,39 +12,39 @@ namespace Med_Map.Repositories.PharmacyRepos
             _context = context;
         }
 
-        public async Task<PharmacyInventory?> GetPharmacyMedicineBatchAsync(string pharmacyProfileId, string medicineId, DateOnly expiryDate)
+        public async Task<PharmacyInventory?> GetPharmacyMedicineBatchAsync(string pharmacyUserId, string medicineId, DateOnly expiryDate)
         {
             return await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pi =>
-                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.PharmacyUserId == pharmacyUserId &&
                     pi.MedicineId.ToString() == medicineId &&
                     pi.ExpiryDate == expiryDate);
         }
 
-        public async Task<List<PharmacyInventory>> GetMedicineBatchesAsync(string pharmacyProfileId, string medicineId)
+        public async Task<List<PharmacyInventory>> GetMedicineBatchesAsync(string pharmacyUserId, string medicineId)
         {
             return await _context.PharmacyInventory
                 .Include(pi => pi.Medicine)
                 .Where(pi =>
-                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.PharmacyUserId == pharmacyUserId &&
                     pi.MedicineId.ToString() == medicineId)
                 .OrderBy(pi => pi.ExpiryDate)
                 .ToListAsync();
         }
 
-        public async Task<PharmacyInventory?> GetBatchByIdAsync(string pharmacyProfileId, Guid batchId)
+        public async Task<PharmacyInventory?> GetBatchByIdAsync(string pharmacyUserId, Guid batchId)
         {
             return await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pi =>
-                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.PharmacyUserId == pharmacyUserId &&
                     pi.Id == batchId);
         }
 
-        public async Task<bool> RemoveBatchByIdAsync(string pharmacyProfileId, Guid batchId)
+        public async Task<bool> RemoveBatchByIdAsync(string pharmacyUserId, Guid batchId)
         {
             var batch = await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pi =>
-                    pi.PharmacyProfileId.ToString() == pharmacyProfileId &&
+                    pi.PharmacyUserId == pharmacyUserId &&
                     pi.Id == batchId);
 
             if (batch == null) return false;
@@ -53,37 +53,35 @@ namespace Med_Map.Repositories.PharmacyRepos
             await _context.SaveChangesAsync();
             return true;
         }
-        public async Task<PharmacyInventory?> GetPharmacyMedicineAsync(string pharmacyId, Guid medicineId)
+        public async Task<PharmacyInventory?> GetPharmacyMedicineAsync(string pharmacyUserId, Guid medicineId)
         {
             return await _context.PharmacyInventory
-                .FirstOrDefaultAsync(pm => pm.PharmacyProfileId == Guid.Parse(pharmacyId) && pm.MedicineId == medicineId);
+                .FirstOrDefaultAsync(pm => pm.PharmacyUserId == pharmacyUserId && pm.MedicineId == medicineId);
         }
         public async Task AddMedicineAsync(PharmacyInventory medicine)
         {
             await _context.PharmacyInventory.AddAsync(medicine);
             await _context.SaveChangesAsync();
         }
-        public async Task<bool> RemoveMedicineAsync(string pharmacyId, Guid medicineId)
+        public async Task<bool> RemoveMedicineAsync(string pharmacyUserId, Guid medicineId)
         {
-            // Find the exact record
             var inventoryItem = await _context.PharmacyInventory
-                .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == Guid.Parse(pharmacyId) && pi.MedicineId == medicineId);
+                .FirstOrDefaultAsync(pi => pi.PharmacyUserId == pharmacyUserId && pi.MedicineId == medicineId);
 
             if (inventoryItem == null)
                 return false;
 
-            // Remove and save
             _context.PharmacyInventory.Remove(inventoryItem);
             await _context.SaveChangesAsync();
 
             return true;
         }
-        public async Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyProfileId, int page, int pageSize = 10)
+        public async Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyUserId, int page, int pageSize = 10)
         {
             var query = _context.PharmacyInventory
                 .AsNoTracking()
                 .Include(pi => pi.Medicine)
-                .Where(pi => pi.PharmacyProfileId == Guid.Parse(pharmacyProfileId));
+                .Where(pi => pi.PharmacyUserId == pharmacyUserId);
 
             var totalCount = await query.CountAsync();
             var items = await query

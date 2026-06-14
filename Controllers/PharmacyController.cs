@@ -213,7 +213,7 @@ namespace Med_Map.Controllers
 
                 var wallet = new Wallet
                 {
-                    PharmacyProfileId = pendingProfileId,
+                    PharmacyUserId = userId,
                     CurrentBalance = 0,
                     TotalEarnings = 0,
                     Currency = CurrencyType.EGP

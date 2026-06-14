@@ -10,7 +10,7 @@
         public double deliveryLongitude { get; set; }
         [Required]
         public double deliveryLatitude { get; set; }
-        public Guid pharmacyId { get; set; }
+        public string pharmacyId { get; set; }
         public List<OrderItemDTO> items { get; set; }
     }
 }

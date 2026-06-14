@@ -53,9 +53,9 @@ namespace Med_Map.Models.ordersANDmedicine
         public Customer Customer { get; set; }
 
 
-        public Guid PharmacyProfileId { get; set; }
-        [ForeignKey("PharmacyProfileId")]
-        public PharmacyProfile Pharmacy { get; set; }
+        public string PharmacyUserId { get; set; }
+        [ForeignKey("PharmacyUserId")]
+        public Pharmacy Pharmacy { get; set; }
 
         public virtual ICollection<OrderItem>? OrderItems { get; set; }
         #endregion

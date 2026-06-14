@@ -60,12 +60,16 @@ namespace Med_Map.Controllers
             if (orderDTO.items == null || !orderDTO.items.Any())
                 return ErrorResponse("Order must contain at least one item", ErrorCodes.ValidationError);
 
+            var targetPharmacy = await pharmacyRepository.GetByIdAsync(orderDTO.pharmacyId);
+            if (targetPharmacy?.ActiveProfile == null)
+                return ErrorResponse("Pharmacy not found or has no active profile", ErrorCodes.UserNotFound);
+
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
             var location = geometryFactory.CreatePoint(new Coordinate(orderDTO.deliveryLongitude, orderDTO.deliveryLatitude));
             var newOrder = new Orders
             {
                 CustomerId = userId,
-                PharmacyProfileId = orderDTO.pharmacyId,
+                PharmacyUserId = orderDTO.pharmacyId,
                 DeliveryAddress = location,
                 PaymentType = paymentType,
                 Status = paymentType == PaymentOptions.Online ? StatusList.Pending : StatusList.Recorded,
@@ -79,7 +83,7 @@ namespace Med_Map.Controllers
             foreach (var item in orderDTO.items)
             {
                 var inventory = await pharmacyInventoryRepository
-                    .GetPharmacyMedicineAsync(orderDTO.pharmacyId.ToString(), item.medicineId);
+                    .GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
                 if (inventory == null)
                     return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
                 if (inventory.StockQuantity < item.quantity)
@@ -129,7 +133,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
             var order = await orderRepository.GetOrderByIdAsync(orderDTO.orderId);
             if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
-            if (order.PharmacyProfileId != pharmacy.ActiveProfile.Id)
+            if (order.PharmacyUserId != userId)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
             // Basic transition validation
@@ -147,7 +151,7 @@ namespace Med_Map.Controllers
 
             if (nextStatus == StatusList.Delivered && order.PaymentType == PaymentOptions.Online)
             {
-                var wallet = await walletRepository.GetByPharmacyProfileIdAsync(order.PharmacyProfileId);
+                var wallet = await walletRepository.GetByPharmacyUserIdAsync(userId);
                 if (wallet != null)
                     await walletTransactionRepository.DepositAsync(wallet.Id, order.TotalAmount, wallet.Currency, order.Id);
             }
@@ -171,17 +175,8 @@ namespace Med_Map.Controllers
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
             if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
 
-            string queryId = userId;
-            if (role == RoleConstants.Names.Pharmacy)
-            {
-                var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
-                if (pharmacy?.ActiveProfile == null)
-                    return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
-                queryId = pharmacy.ActiveProfile.Id.ToString();
-            }
-
             // Get orders based on user role and user ID
-            var orders = await orderRepository.GetAllOrdersAsync(queryId,role.ToString());
+            var orders = await orderRepository.GetAllOrdersAsync(userId, role.ToString());
 
             if (orders == null || !orders.Any())
                 return SuccessResponse(new List<OrderResponseDTO>(), "No orders found", SuccessCodes.DataRetrieved);
@@ -211,12 +206,8 @@ namespace Med_Map.Controllers
             if (role == RoleConstants.Names.Customer && order.CustomerId != userId)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            if (role == RoleConstants.Names.Pharmacy)
-            {
-                var pharmacy = await pharmacyRepository.GetByIdAsync(userId);
-                if (pharmacy?.ActiveProfile?.Id != order.PharmacyProfileId)
-                    return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
-            }
+            if (role == RoleConstants.Names.Pharmacy && order.PharmacyUserId != userId)
+                return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             //Map to DTO and return response
             var response = MapOrderToResponseDTO(order);
             return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);

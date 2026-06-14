@@ -19,7 +19,7 @@
             IQueryable<Orders> query = _context.Orders.AsNoTracking().Include(o => o.OrderItems) 
                                        .ThenInclude(oi => oi.Medicine);
             if (role == "Pharmacy")
-                return await query.Where(o => o.PharmacyProfileId == Guid.Parse(id)).ToListAsync();
+                return await query.Where(o => o.PharmacyUserId == id).ToListAsync();
 
             if (role == "Customer")
                 return await query.Where(o => o.CustomerId == id).ToListAsync();
@@ -56,7 +56,7 @@
                     foreach (var item in order.OrderItems)
                     {
                         var inventory = await _context.PharmacyInventory
-                            .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == order.PharmacyProfileId
+                            .FirstOrDefaultAsync(pi => pi.PharmacyUserId == order.PharmacyUserId
                                                     && pi.MedicineId == item.MedicineId);
                         if (inventory != null)
                         {
@@ -111,7 +111,7 @@
                 foreach (var item in order.OrderItems)
                 {
                     var inventory = await _context.PharmacyInventory
-                        .FirstOrDefaultAsync(pi => pi.PharmacyProfileId == order.PharmacyProfileId
+                        .FirstOrDefaultAsync(pi => pi.PharmacyUserId == order.PharmacyUserId
                                                 && pi.MedicineId == item.MedicineId);
                     if (inventory != null)
                         inventory.StockQuantity += item.Quantity;

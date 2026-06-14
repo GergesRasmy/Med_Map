@@ -42,7 +42,7 @@ namespace Med_Map.Controllers
             if (medicineMaster == null) return ErrorResponse("Medicine not found in master database", ErrorCodes.DataNotFound);
 
             // Prevent duplicate entry (Check if already in inventory)
-            var existingBatch = await pharmacyInventoryRepository.GetPharmacyMedicineBatchAsync(pharmacy.ActiveProfile.Id.ToString(), model.medicineId.ToString(), model.expiryDate);
+            var existingBatch = await pharmacyInventoryRepository.GetPharmacyMedicineBatchAsync(userId, model.medicineId.ToString(), model.expiryDate);
             if (existingBatch != null)
                 return ErrorResponse("A batch with this medicine and expiry date already exists", ErrorCodes.DuplicateEntry);
             if (model.expiryDate < DateOnly.FromDateTime(DateTime.UtcNow))
@@ -51,7 +51,7 @@ namespace Med_Map.Controllers
             // Map and Insert then return response
             var inventoryItem = new PharmacyInventory
             {
-                PharmacyProfileId = pharmacy.ActiveProfile.Id,
+                PharmacyUserId = userId,
                 MedicineId = model.medicineId,
                 StockQuantity = model.quantity,
                 ExpiryDate = model.expiryDate,
@@ -85,7 +85,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("No fields provided to update.", ErrorCodes.ValidationError);
 
             var existingItem = await pharmacyInventoryRepository
-                .GetBatchByIdAsync(pharmacy.ActiveProfile.Id.ToString(), model.batchId);
+                .GetBatchByIdAsync(userId, model.batchId);
             if (existingItem == null)
                 return ErrorResponse("Batch not found in pharmacy inventory", ErrorCodes.DataNotFound);
 
@@ -121,7 +121,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             //remove medicine from inventory
-            var success = await pharmacyInventoryRepository.RemoveBatchByIdAsync(pharmacy.ActiveProfile.Id.ToString(), model.batchId);
+            var success = await pharmacyInventoryRepository.RemoveBatchByIdAsync(userId, model.batchId);
             if (!success)
                 return ErrorResponse("Medicine not found.", ErrorCodes.DataNotFound);
 
@@ -143,7 +143,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var (items, totalCount) = await pharmacyInventoryRepository
-                .GetPharmacyInventoryAsync(pharmacy.ActiveProfile.Id.ToString(), page, pageSize);
+                .GetPharmacyInventoryAsync(userId, page, pageSize);
 
             var response = new PagedDTO<InventoryItemResponseDTO>
             {
@@ -177,7 +177,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var batches = await pharmacyInventoryRepository
-                .GetMedicineBatchesAsync(pharmacy.ActiveProfile.Id.ToString(), medicineId);
+                .GetMedicineBatchesAsync(userId, medicineId);
 
             if (!batches.Any())
                 return ErrorResponse("No batches found for this medicine", ErrorCodes.DataNotFound);

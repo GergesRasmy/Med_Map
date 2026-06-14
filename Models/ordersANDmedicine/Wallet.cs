@@ -29,9 +29,9 @@ namespace Med_Map.Models.ordersANDmedicine
         public DateTime? PinLockedUntil { get; set; }
 
         #region foreign keys
-        public Guid PharmacyProfileId { get; set; }
-        [ForeignKey("PharmacyProfileId")]
-        public PharmacyProfile Pharmacy { get; set; }
+        public string PharmacyUserId { get; set; }
+        [ForeignKey("PharmacyUserId")]
+        public Pharmacy Pharmacy { get; set; }
         #endregion
     }
 }
