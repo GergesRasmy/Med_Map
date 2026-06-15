@@ -9,8 +9,10 @@
 ### `paymentOption` / `PaymentOptions`
 | Value | Notes |
 |-------|-------|
-| `"Cash"` | Pickup only |
-| `"Online"` | Required for Delivery; payment processed via Kashier |
+| `"Cash"` | Pay on delivery / at pickup. Order starts at `Recorded`. |
+| `"Online"` | Card payment via Kashier. Order starts at `Pending` until paid. |
+
+> Any combination of `paymentOption` × `fulfillmentType` is allowed — Cash or Online works for both Pickup and Delivery.
 
 ### `fulfillmentType` / `FulfillmentType`
 | Value | Notes |
@@ -35,8 +37,8 @@
 
 ## Business Rules
 
-- **Delivery requires Online payment.** Sending `fulfillmentType: "Delivery"` with `paymentOption: "Cash"` returns 400.
-- **Cash + Pickup** is valid and starts at `Recorded`.
+- **Payment and fulfillment are independent.** Any combination is valid — Cash or Online works for both Pickup and Delivery.
+- **Cash payment** (any fulfillment) starts at `Recorded`.
 - **Online payment** (any fulfillment) starts at `Pending` until payment is confirmed.
 - **Item quantity** is capped at 1–10 per line item (server enforced).
 - **Price snapshot:** `unitPrice` in each order item is locked at placement time from the pharmacy's inventory — it does not change if the pharmacy later updates the price.
@@ -44,6 +46,8 @@
 ---
 
 ## State Machines
+
+> **Online orders start at `Pending`, not `Recorded`.** They enter the machines below only after the Kashier webhook confirms payment (see [§7 Online Payment Flow](#7-online-payment-flow-kashier)). Cash + Pickup orders start directly at `Recorded`.
 
 ### Delivery path
 ```
@@ -227,7 +231,6 @@ Content-Type: application/json
 **Error cases:**
 | Condition | HTTP | Description |
 |-----------|------|-------------|
-| Delivery + Cash | 400 | `"Delivery requires card payment"` |
 | Empty items list | 400 | `"Order must contain at least one item"` |
 | Medicine not in pharmacy inventory | 400 | `"Medicine not in pharmacy inventory"` |
 | Insufficient stock | 400 | `"Not enough stock for <TradeName>"` |
@@ -321,6 +324,114 @@ Stock is restored automatically inside a DB transaction.
 ```
 
 **Error case:** returns 400 with `"Order cannot be cancelled at this stage."` if the order is in `OutForDelivery`, `ReadyForPickup`, `Delivered`, or already `Canceled`.
+
+---
+
+### 7. Online Payment Flow (Kashier)
+
+Online orders (`paymentOption: "Online"`) are **not active** the moment they are placed. `/api/order/place` creates them at status `Pending`, and they only enter the normal `Recorded → Packaged → …` state machine **after** the payment is confirmed by Kashier's webhook. Cash orders (any fulfillment) skip this entire section — they start at `Recorded`.
+
+The payment endpoints live under a separate controller: `/api/payments`.
+
+```
+Place (Online) ──> order: Pending
+      │
+      ▼
+POST /api/payments/initiate ──> creates Payment (Pending), returns Kashier paymentUrl
+      │
+      ▼
+Customer pays on Kashier hosted page
+      │
+      ▼
+Kashier ──> POST /api/payments/webhook (server-to-server)
+      │
+      ├─ SUCCESS: Payment → Paid,   every order Pending → Recorded
+      └─ FAILED:  Payment → Failed, orders stay Pending
+      │
+      ▼
+Client polls GET /api/payments/status/{orderId} until Paid / Failed
+```
+
+> One `Payment` can cover **several orders at once** (e.g. a multi-pharmacy cart) — pass all their IDs to `/initiate`. On success every linked order is advanced together.
+
+#### 7a. Initiate Payment
+```
+POST /api/payments/initiate
+Authorization: Bearer <Customer JWT>
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+  "orderIds": [
+    "a1b2c3d4-0000-0000-0000-000000000000",
+    "b2c3d4e5-0000-0000-0000-000000000000"
+  ]
+}
+```
+
+**Success response (200):**
+```json
+{
+  "data": { "paymentUrl": "https://checkout.kashier.io/?..." },
+  "message": "Payment initiated successfully",
+  "code": "data_created_successfully"
+}
+```
+
+Open `paymentUrl` in a WebView / browser so the customer can pay.
+
+**Error cases:**
+| Condition | HTTP | Description |
+|-----------|------|-------------|
+| Empty `orderIds` | 400 | `"At least one order ID is required"` |
+| Order not found | 400 | `"Order {id} not found"` |
+| Order belongs to another user | 400 | `"Unauthorized"` |
+| Order not in `Pending` | 400 | `"Order {id} is already processed"` |
+| Order is not an online order | 400 | `"Order {id} is not an online order"` |
+| Order already paid | 400 | `"Order {id} is already paid"` |
+| A pending payment already exists | 400 | `"A pending payment already exists for order {id}"` |
+| Kashier URL creation failed | 400 | `"Payment initiation failed. Please try again."` |
+
+#### 7b. Get Payment Status
+```
+GET /api/payments/status/{orderId}
+Authorization: Bearer <Customer JWT>
+```
+
+Poll this after redirecting to Kashier to learn the outcome.
+
+**Success response (200):**
+```json
+{
+  "data": {
+    "orderId": "a1b2c3d4-0000-0000-0000-000000000000",
+    "paymentStatus": "Paid",
+    "orderIds": [ "a1b2c3d4-0000-0000-0000-000000000000" ]
+  },
+  "message": "Payment status retrieved",
+  "code": "data_retrieved_successfully"
+}
+```
+
+`paymentStatus` is one of `Pending`, `Paid`, `Failed`, `Cancelled`. `orderIds` lists every order covered by the same payment.
+
+**Error cases:**
+| Condition | HTTP | Description |
+|-----------|------|-------------|
+| Order not found | 400 | `"Order not found"` |
+| Order belongs to another user | 400 | `"Unauthorized"` |
+| No payment for the order | 400 | `"No payment found for this order"` |
+
+#### 7c. Webhook (Kashier → server)
+```
+POST /api/payments/webhook
+```
+
+Server-to-server only — **not called by the client.** Kashier posts the transaction result here. The server verifies the signature, enforces idempotency (duplicate webhooks are ignored), checks the paid amount matches the recorded amount, and on `SUCCESS` flips the payment to `Paid` and advances each linked order to `Recorded`. Always returns `200 OK` so Kashier does not retry on handled-but-rejected payloads (rejections are logged).
+
+> The client never calls this endpoint; it's documented here only so the full flow is clear.
 
 ---
 

@@ -4,6 +4,10 @@
     {
         public Guid id { get; set; }
         public DateTime createdAt { get; set; }
+        public decimal itemsSubtotal { get; set; }
+        public decimal deliveryFee { get; set; }
+        public decimal paymentFee { get; set; }
+        public decimal appFee { get; set; }
         public decimal totalAmount { get; set; }
         public string status { get; set; }
         public List<OrderItemResponseDTO> items { get; set; }

@@ -54,8 +54,6 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Invalid payment option", ErrorCodes.InvalidInput);
             if (!Enum.TryParse<FulfillmentType>(orderDTO.fulfillmentType, true, out var fulfillment))
                 return ErrorResponse("Invalid fulfillment type", ErrorCodes.InvalidInput);
-            if (fulfillment == FulfillmentType.Delivery && paymentType != PaymentOptions.Online)
-                return ErrorResponse("Delivery requires card payment", ErrorCodes.InvalidAction);
 
             if (orderDTO.items == null || !orderDTO.items.Any())
                 return ErrorResponse("Order must contain at least one item", ErrorCodes.ValidationError);
@@ -78,7 +76,7 @@ namespace Med_Map.Controllers
                 FulfillmentType = fulfillment
             };
             // Validate everything BEFORE opening the transaction
-            decimal total = 0;
+            decimal itemsSubtotal = 0;
             var inventoryCache = new Dictionary<Guid, PharmacyInventory>();
             foreach (var item in orderDTO.items)
             {
@@ -96,9 +94,20 @@ namespace Med_Map.Controllers
                     unitPrice = inventory.Price
                 });
                 inventoryCache[item.medicineId] = inventory;
-                total += item.quantity * inventory.Price;
+                itemsSubtotal += item.quantity * inventory.Price;
             }
-            newOrder.TotalAmount = total;
+
+            var deliveryFee = fulfillment == FulfillmentType.Delivery
+                ? (targetPharmacy.ActiveProfile.HaveDelivary ? targetPharmacy.ActiveProfile.DeliveryFee : 0)
+                : 0;
+            var paymentFee = paymentType == PaymentOptions.Cash ? Constant.CashOnDeliveryFee : Constant.OnlineFee;
+            var appFee = Constant.AppFee;
+
+            newOrder.ItemsSubtotal = itemsSubtotal;
+            newOrder.DeliveryFee = deliveryFee;
+            newOrder.PaymentFee = paymentFee;
+            newOrder.AppFee = appFee;
+            newOrder.TotalAmount = itemsSubtotal + deliveryFee + paymentFee + appFee;
 
             // Only writes go inside the transaction
             using var transaction = await unitOfWork.BeginTransactionAsync();
@@ -270,18 +279,23 @@ namespace Med_Map.Controllers
             {
                 var wallet = await walletRepository.GetByPharmacyUserIdAsync(userId);
                 if (wallet != null)
-                    await walletTransactionRepository.DepositAsync(wallet.Id, order.TotalAmount, wallet.Currency, order.Id);
+                {
+                    var pharmacyShare = order.ItemsSubtotal + order.DeliveryFee;
+                    await walletTransactionRepository.DepositAsync(wallet.Id, pharmacyShare, wallet.Currency, order.Id);
+                }
             }
 
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
         }
         [Authorize]
-        [HttpGet("myOrders")]                   //api/order/myOrders
-        [ProducesResponseType(typeof(SuccessResponseDTO<List<OrderResponseDTO>>), 200)]
+        [HttpGet("myOrders")]                   //api/order/myOrders?page=1&pageSize=10
+        [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<OrderResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> getMyOrders()
+        public async Task<IActionResult> getMyOrders([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            // Extract user ID and role from claims
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
@@ -292,14 +306,17 @@ namespace Med_Map.Controllers
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
             if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
 
-            // Get orders based on user role and user ID
-            var orders = await orderRepository.GetAllOrdersAsync(userId, role.ToString());
+            var (orders, totalCount) = await orderRepository.GetAllOrdersAsync(userId, role, page, pageSize);
 
-            if (orders == null || !orders.Any())
-                return SuccessResponse(new List<OrderResponseDTO>(), "No orders found", SuccessCodes.DataRetrieved);
+            var response = new PagedDTO<OrderResponseDTO>
+            {
+                currentPage = page,
+                pageSize = pageSize,
+                totalCount = totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                items = orders.Select(MapOrderToResponseDTO).ToList()
+            };
 
-            //Map to DTO and return response
-            var response = orders.Select(MapOrderToResponseDTO).ToList();
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
         [Authorize]
@@ -356,6 +373,10 @@ namespace Med_Map.Controllers
                 id = order.Id,
                 createdAt = order.CreatedAt,
                 status = order.Status.ToString(),
+                itemsSubtotal = order.ItemsSubtotal,
+                deliveryFee = order.DeliveryFee,
+                paymentFee = order.PaymentFee,
+                appFee = order.AppFee,
                 totalAmount = order.TotalAmount,
                 items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => new OrderItemResponseDTO
                 {
@@ -364,7 +385,6 @@ namespace Med_Map.Controllers
                     UnitPrice = oi.unitPrice
                 }).ToList(),
                 fulfillmentType = order.FulfillmentType.ToString()
-               
             };
         }
 

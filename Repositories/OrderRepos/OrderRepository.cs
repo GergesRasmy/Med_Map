@@ -14,17 +14,24 @@
             _context.Orders.Add(order);
         }
 
-        public async Task<List<Orders>?> GetAllOrdersAsync(string id,string role)
+        public async Task<(List<Orders> items, int totalCount)> GetAllOrdersAsync(string id, string role, int page, int pageSize)
         {
-            IQueryable<Orders> query = _context.Orders.AsNoTracking().Include(o => o.OrderItems) 
-                                       .ThenInclude(oi => oi.Medicine);
-            if (role == "Pharmacy")
-                return await query.Where(o => o.PharmacyUserId == id).ToListAsync();
+            IQueryable<Orders> query = _context.Orders.AsNoTracking()
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Medicine);
 
-            if (role == "Customer")
-                return await query.Where(o => o.CustomerId == id).ToListAsync();
+            query = role switch
+            {
+                "Pharmacy" => query.Where(o => o.PharmacyUserId == id),
+                "Customer" => query.Where(o => o.CustomerId == id),
+                _ => query.Where(_ => false)
+            };
 
-            return new List<Orders>();
+            query = query.OrderByDescending(o => o.CreatedAt);
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            return (items, totalCount);
         }
         public async Task<Orders?> GetOrderByIdAsync(string orderId)
         {

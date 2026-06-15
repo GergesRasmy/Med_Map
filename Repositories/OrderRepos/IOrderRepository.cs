@@ -3,7 +3,7 @@
     public interface IOrderRepository
     {
         void Insert(Orders order);
-        Task<List<Orders>?> GetAllOrdersAsync(string id, string role);
+        Task<(List<Orders> items, int totalCount)> GetAllOrdersAsync(string id, string role, int page, int pageSize);
         Task<Orders?> GetOrderByIdAsync(string orderId);
         Task<bool> CancelOrder(string orderId, string userId);
         Task SaveChangesAsync();

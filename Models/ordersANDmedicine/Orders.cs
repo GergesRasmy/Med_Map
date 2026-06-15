@@ -43,6 +43,19 @@ namespace Med_Map.Models.ordersANDmedicine
         public Point DeliveryAddress { get; set; }
         [Required]
         [Column(TypeName = "decimal(18,2)")]
+        public decimal ItemsSubtotal { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DeliveryFee { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PaymentFee { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal AppFee { get; set; }
+
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
         public decimal TotalAmount { get; set; }
         #region foreign keys
