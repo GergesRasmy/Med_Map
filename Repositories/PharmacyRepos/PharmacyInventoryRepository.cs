@@ -58,6 +58,13 @@ namespace Med_Map.Repositories.PharmacyRepos
             return await _context.PharmacyInventory
                 .FirstOrDefaultAsync(pm => pm.PharmacyUserId == pharmacyUserId && pm.MedicineId == medicineId);
         }
+        public async Task<PharmacyInventory?> GetPharmacyMedicineWithDetailsAsync(string pharmacyUserId, Guid medicineId)
+        {
+            return await _context.PharmacyInventory
+                .AsNoTracking()
+                .Include(pm => pm.Medicine)
+                .FirstOrDefaultAsync(pm => pm.PharmacyUserId == pharmacyUserId && pm.MedicineId == medicineId);
+        }
         public async Task AddMedicineAsync(PharmacyInventory medicine)
         {
             await _context.PharmacyInventory.AddAsync(medicine);

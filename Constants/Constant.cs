@@ -6,6 +6,11 @@
         public const double OtpExpirationTime = 5; // in Minutes
         public const int PageSize = 10;
 
+        // platform/order fees (in the platform's currency) — surfaced by the cart-validation endpoint
+        public const decimal AppFee = 5.00m;             // flat platform service fee per order
+        public const decimal CashOnDeliveryFee = 15.00m; // extra fee charged when paying cash on delivery
+        public const decimal OnlineFee = 7.00m;          // extra fee charged for online (card) payments
+
         // file upload settings
         public static readonly Dictionary<string, string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
         {

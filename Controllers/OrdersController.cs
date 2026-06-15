@@ -120,6 +120,123 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(MapOrderToResponseDTO(newOrder), "Order created successfully", SuccessCodes.DataCreated);
         }
+        [Authorize(Roles = RoleConstants.Names.Customer)]
+        [HttpPost("validate-cart")]             //api/order/validate-cart
+        [ProducesResponseType(typeof(SuccessResponseDTO<CartValidationResponseDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> ValidateCart([FromBody] List<CartPharmacyValidationDTO> carts)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+            if (!user.IsActive) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
+
+            if (carts == null || !carts.Any())
+                return ErrorResponse("Cart must contain at least one pharmacy", ErrorCodes.ValidationError);
+
+            var response = new CartValidationResponseDTO
+            {
+                fees = new CartFeesDTO
+                {
+                    appFee = Constant.AppFee,
+                    cashOnDeliveryFee = Constant.CashOnDeliveryFee,
+                    onlineFee = Constant.OnlineFee
+                }
+            };
+
+            foreach (var cart in carts)
+            {
+                var result = new PharmacyCartValidationResultDTO { pharmacyId = cart.pharmacyId };
+
+                var pharmacy = await pharmacyRepository.GetByIdAsync(cart.pharmacyId);
+                if (pharmacy?.ActiveProfile == null)
+                {
+                    result.found = false;
+                    result.isValid = false;
+                    // still echo the requested items back so the client can show them as unavailable
+                    foreach (var item in cart.items ?? new List<CartItemValidationDTO>())
+                        result.items.Add(new CartItemValidationResultDTO
+                        {
+                            medicineId = item.medicineId,
+                            tradeName = item.tradeName,
+                            genericName = item.genericName,
+                            previousUnitPrice = item.unitPrice,
+                            priceUnitIsoCode = item.priceUnitIsoCode,
+                            requestedQuantity = item.quantity,
+                            availableQuantity = 0,
+                            isAvailable = false,
+                            lineTotal = 0,
+                            message = "Pharmacy not found or unavailable"
+                        });
+                    response.pharmacies.Add(result);
+                    continue;
+                }
+
+                result.found = true;
+                result.pharmacyName = pharmacy.ActiveProfile.PharmacyName;
+                result.deliveryAvailable = pharmacy.ActiveProfile.HaveDelivary;
+                result.deliveryFee = pharmacy.ActiveProfile.HaveDelivary ? pharmacy.ActiveProfile.DeliveryFee : 0;
+
+                bool allItemsOk = true;
+                decimal subtotal = 0;
+                foreach (var item in cart.items ?? new List<CartItemValidationDTO>())
+                {
+                    var inventory = await pharmacyInventoryRepository
+                        .GetPharmacyMedicineWithDetailsAsync(cart.pharmacyId, item.medicineId);
+
+                    var itemResult = new CartItemValidationResultDTO
+                    {
+                        medicineId = item.medicineId,
+                        requestedQuantity = item.quantity,
+                        previousUnitPrice = item.unitPrice,
+                        priceUnitIsoCode = item.priceUnitIsoCode,
+                        tradeName = item.tradeName,
+                        genericName = item.genericName
+                    };
+
+                    if (inventory == null)
+                    {
+                        itemResult.availableQuantity = 0;
+                        itemResult.isAvailable = false;
+                        itemResult.lineTotal = 0;
+                        itemResult.message = "No longer available at this pharmacy";
+                        allItemsOk = false;
+                    }
+                    else
+                    {
+                        itemResult.tradeName = inventory.Medicine?.TradeName ?? item.tradeName;
+                        itemResult.genericName = inventory.Medicine?.GenericName ?? item.genericName;
+                        itemResult.currentUnitPrice = inventory.Price;
+                        itemResult.priceChanged = item.unitPrice.HasValue && item.unitPrice.Value != inventory.Price;
+                        itemResult.availableQuantity = inventory.StockQuantity;
+                        itemResult.isAvailable = inventory.StockQuantity >= item.quantity;
+                        itemResult.lineTotal = itemResult.isAvailable ? inventory.Price * item.quantity : 0;
+
+                        if (!itemResult.isAvailable)
+                        {
+                            itemResult.message = inventory.StockQuantity == 0
+                                ? "Out of stock"
+                                : $"Only {inventory.StockQuantity} in stock";
+                            allItemsOk = false;
+                        }
+                        else
+                        {
+                            subtotal += itemResult.lineTotal;
+                            if (itemResult.priceChanged) itemResult.message = "Price updated";
+                        }
+                    }
+
+                    result.items.Add(itemResult);
+                }
+
+                result.subtotal = subtotal;
+                result.isValid = allItemsOk;
+                response.pharmacies.Add(result);
+            }
+
+            return SuccessResponse(response, "Cart validated", SuccessCodes.DataRetrieved);
+        }
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
         [HttpPatch("update-status")]         //api/order/update-status
         [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
