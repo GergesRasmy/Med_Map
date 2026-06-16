@@ -11,6 +11,9 @@
         public const decimal CashOnDeliveryFee = 15.00m; // extra fee charged when paying cash on delivery
         public const decimal OnlineFee = 7.00m;          // extra fee charged for online (card) payments
 
+        // pending online order expiry — orders unpaid longer than this are auto-cancelled and stock is restored
+        public const int PendingOrderExpiryMinutes = 10;
+
         // file upload settings
         public static readonly Dictionary<string, string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
         {

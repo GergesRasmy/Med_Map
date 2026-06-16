@@ -48,6 +48,7 @@ public partial class Program
         builder.Services.AddScoped<IOtpService, OtpService>();
         builder.Services.AddScoped<IAccountService, AccountService>();
         builder.Services.AddScoped<IKashierService, KashierService>();
+        builder.Services.AddHostedService<PendingOrderExpiryService>();
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {
