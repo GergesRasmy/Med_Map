@@ -129,10 +129,10 @@ namespace Med_Map.Controllers
             logger.LogInformation("Kashier webhook received: {Payload}", rawPayload);
 
             // Kashier posts { "event": "...", "data": { ... , "signatureKeys": [...], "signature": "..." } }
-            JsonElement data;
+            JsonElement root, data;
             try
             {
-                var root = JsonSerializer.Deserialize<JsonElement>(rawPayload);
+                root = JsonSerializer.Deserialize<JsonElement>(rawPayload);
                 data = root.TryGetProperty("data", out var d) ? d : root;
             }
             catch
@@ -141,7 +141,9 @@ namespace Med_Map.Controllers
                 return Ok();
             }
 
-            if (!kashierService.VerifyWebhookSignature(data))
+            // Docs say hash comes in x-kashier-signature header; Kashier also echoes it as "hash" in the body.
+            var headerSig = Request.Headers["x-kashier-signature"].FirstOrDefault();
+            if (!kashierService.VerifyWebhookSignature(root, headerSig))
             {
                 logger.LogWarning("Kashier webhook signature verification failed");
                 return Ok();
@@ -173,7 +175,7 @@ namespace Med_Map.Controllers
 
                 var transactionId = data.TryGetProperty("transactionId", out var t) ? t.GetString() : null;
 
-                payment.Logs.Add(new PaymentLog
+                await paymentRepository.AddLogAsync(new PaymentLog
                 {
                     PaymentId = payment.Id,
                     Event = success ? "success" : "failed",

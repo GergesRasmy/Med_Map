@@ -51,32 +51,38 @@ namespace Med_Map.Services
             return url;
         }
 
-        public bool VerifyWebhookSignature(JsonElement data)
+        public bool VerifyWebhookSignature(JsonElement root, string? headerSignature = null)
         {
             var secret = _config["Kashier:PaymentApiKey"]!;
 
             try
             {
+                // Kashier nests field data under "data" but puts the hash at root level (and in x-kashier-signature header).
+                var data = root.TryGetProperty("data", out var d) ? d : root;
+
+                // Prefer the header signature (per docs), fall back to "hash" field in body.
+                var received = headerSignature
+                    ?? (root.TryGetProperty("hash", out var sigEl) ? sigEl.GetString() : null)
+                    ?? "";
+
                 if (!data.TryGetProperty("signatureKeys", out var keysEl) ||
-                    keysEl.ValueKind != JsonValueKind.Array ||
-                    !data.TryGetProperty("signature", out var sigEl))
+                    keysEl.ValueKind != JsonValueKind.Array)
                 {
-                    _logger.LogWarning("Kashier webhook missing signatureKeys or signature");
+                    _logger.LogWarning("Kashier webhook missing signatureKeys");
                     return false;
                 }
 
-                // Rebuild the query string Kashier signed: "key=value&key=value..." in signatureKeys order.
-                var parts = new List<string>();
-                foreach (var keyEl in keysEl.EnumerateArray())
-                {
-                    var key = keyEl.GetString();
-                    if (string.IsNullOrEmpty(key)) continue;
-                    parts.Add($"{key}={GetField(data, key)}");
-                }
+                // Docs: sort signatureKeys alphabetically before building the query string.
+                var keys = keysEl.EnumerateArray()
+                    .Select(k => k.GetString())
+                    .Where(k => !string.IsNullOrEmpty(k))
+                    .OrderBy(k => k, StringComparer.Ordinal)
+                    .ToList();
+
+                var parts = keys.Select(key => $"{key}={Uri.EscapeDataString(GetField(data, key!))}").ToList();
 
                 var queryString = string.Join("&", parts);
                 var computed = ComputeHmacHex(queryString, secret);
-                var received = sigEl.GetString() ?? "";
 
                 var match = computed.Equals(received, StringComparison.OrdinalIgnoreCase);
                 if (!match)

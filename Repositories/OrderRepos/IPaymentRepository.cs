@@ -6,6 +6,7 @@
         Task<Payment?> GetByOrderIdAsync(Guid orderId);
         Task<Payment?> GetByProviderOrderIdAsync(string providerOrderId);
         Task AddAsync(Payment payment);
+        Task AddLogAsync(PaymentLog log);
         Task SaveChangesAsync();
     }
 }

@@ -13,9 +13,9 @@ namespace Med_Map.Services
         string BuildPaymentUrl(decimal amount, string orderId);
 
         /// <summary>
-        /// Verifies the signature on a Kashier server webhook payload's <c>data</c> object.
-        /// Kashier sends a <c>signatureKeys</c> array telling us which fields to sign, in order.
+        /// Verifies the Kashier webhook signature. Kashier puts <c>hash</c> at the root of the
+        /// payload and <c>signatureKeys</c> inside the nested <c>data</c> object.
         /// </summary>
-        bool VerifyWebhookSignature(JsonElement data);
+        bool VerifyWebhookSignature(JsonElement root, string? headerSignature = null);
     }
 }

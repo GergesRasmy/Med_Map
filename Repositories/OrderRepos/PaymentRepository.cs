@@ -38,6 +38,11 @@
             await _context.SaveChangesAsync();
         }
 
+        public async Task AddLogAsync(PaymentLog log)
+        {
+            await _context.PaymentLog.AddAsync(log);
+        }
+
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
