@@ -7,6 +7,9 @@
         public DateOnly birthDate { get; set; }
         public string? medicalHistory { get; set; }
         public string? address { get; set; }
+        public double? latitude { get; set; }
+        public double? longitude { get; set; }
+        public string? avatarUrl { get; set; }
         public string userName { get; set; }
         public string displayName { get; set; }
         public string email { get; set; }

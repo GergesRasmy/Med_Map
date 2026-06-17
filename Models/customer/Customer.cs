@@ -12,6 +12,8 @@ namespace Med_Map.Models.customer
         public string? MedicalHistory { get; set; }
 
         public string? address { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         // --- Identity Link ---
         [Key, ForeignKey("User")]

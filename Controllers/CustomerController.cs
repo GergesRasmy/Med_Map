@@ -15,13 +15,15 @@ namespace Med_Map.Controllers
         private readonly ICustomerRepository customerRepository;
         private readonly IOtpService otpService;
         private readonly IAccountService accountService;
+        private readonly IFileService fileService;
 
-        public CustomerController(UserManager<ApplicationUser> userManager, ICustomerRepository customerRepository, IOtpService otpService,IAccountService accountService)
+        public CustomerController(UserManager<ApplicationUser> userManager, ICustomerRepository customerRepository, IOtpService otpService, IAccountService accountService, IFileService fileService)
         {
             this.userManager = userManager;
             this.customerRepository = customerRepository;
             this.otpService = otpService;
             this.accountService = accountService;
+            this.fileService = fileService;
         }
         #endregion
         [HttpPost("register")]           //api/customer/register
@@ -47,6 +49,8 @@ namespace Med_Map.Controllers
                 ApplicationUserId = userId,
                 User = user,
                 address = model.address,
+                Latitude = model.latitude,
+                Longitude = model.longitude,
                 BirthDate = model.birthDate ?? DateOnly.MinValue,
                 MedicalHistory = model.medicalHistory
             };
@@ -76,6 +80,8 @@ namespace Med_Map.Controllers
             if (!success) return ErrorResponse(errorMessage!, errorCode!);            
 
             if (model.address != null) customer.address = model.address;
+            if (model.latitude != null) customer.Latitude = model.latitude;
+            if (model.longitude != null) customer.Longitude = model.longitude;
             if (model.birthDate != null) customer.BirthDate = model.birthDate.Value;
             if (model.medicalHistory != null) customer.MedicalHistory = model.medicalHistory;
 
@@ -111,6 +117,38 @@ namespace Med_Map.Controllers
             };
             return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
         }
+        [HttpPost("avatar")]
+        [Authorize(Roles = RoleConstants.Names.Customer)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<CustomerDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> UploadAvatar([FromForm] UploadAvatarDTO model)
+        {
+            var avatar = model.avatar;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            var customer = await customerRepository.GetByIdAsync(userId, asNoTracking: false);
+            if (customer == null) return ErrorResponse("Customer profile not found", ErrorCodes.UserNotFound);
+
+            try
+            {
+                if (user.AvatarUrl != null)
+                    await fileService.DeleteFileAsync(user.AvatarUrl);
+
+                user.AvatarUrl = await fileService.SaveFileAsync(avatar, "Customer_Avatars");
+                await userManager.UpdateAsync(user);
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex.Message, ErrorCodes.InvalidAction);
+            }
+
+            return SuccessResponse(MapToCustomerDetails(customer), "Avatar updated successfully", SuccessCodes.DataUpdated);
+        }
+
         private CustomerDetailsDTO MapToCustomerDetails(Customer customer)
         {
             return new CustomerDetailsDTO
@@ -122,6 +160,9 @@ namespace Med_Map.Controllers
                 email = customer.User.Email ?? "",
                 phoneNumber = customer.User.PhoneNumber,
                 address = customer.address,
+                latitude = customer.Latitude,
+                longitude = customer.Longitude,
+                avatarUrl = customer.User.AvatarUrl,
                 birthDate = customer.BirthDate,
                 medicalHistory = customer.MedicalHistory
             };
