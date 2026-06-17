@@ -138,7 +138,7 @@ namespace Med_Map.Controllers
                 if (user.AvatarUrl != null)
                     await fileService.DeleteFileAsync(user.AvatarUrl);
 
-                user.AvatarUrl = await fileService.SaveFileAsync(avatar, "Customer_Avatars");
+                user.AvatarUrl = await fileService.SaveFileAsync(avatar, Constant.UploadFolders.CustomerAvatars);
                 await userManager.UpdateAsync(user);
             }
             catch (Exception ex)

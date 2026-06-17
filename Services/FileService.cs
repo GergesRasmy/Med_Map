@@ -41,13 +41,31 @@
                 await file.CopyToAsync(fileStream);
             }
 
-            return $"/uploads/{folderName}/{uniqueFileName}";
+            var apiRoute = Constant.UploadFolders.ToApiRoute[folderName];
+            return $"/api/files/{apiRoute}/{uniqueFileName}";
         }
        
 
-        public async Task DeleteFileAsync(string filePath)
+        public async Task DeleteFileAsync(string apiUrl)
         {
-            string absolutePath = Path.Combine(_environment.WebRootPath, filePath);
+            // apiUrl format: /api/files/{route}/{filename}
+            var segments = apiUrl.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 4)
+            {
+                _logger.LogWarning("Skipping delete — unexpected URL format: {Url}", apiUrl);
+                return;
+            }
+
+            var apiRoute = segments[2]; // "avatars" | "licenses" | "national-ids" | "medicine-images"
+            var fileName = segments[3];
+
+            if (!Constant.UploadFolders.FromApiRoute.TryGetValue(apiRoute, out var folder))
+            {
+                _logger.LogWarning("Skipping delete — unknown route segment '{Route}' in URL: {Url}", apiRoute, apiUrl);
+                return;
+            }
+
+            string absolutePath = Path.Combine(_environment.WebRootPath, "uploads", folder, fileName);
             try
             {
                 if (File.Exists(absolutePath))
@@ -58,7 +76,7 @@
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to cleanup file at {Path}. Exception: {Message}", absolutePath, ex.Message);
+                _logger.LogError(ex, "Failed to cleanup file at {Path}", absolutePath);
             }
         }
     }

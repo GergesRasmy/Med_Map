@@ -527,7 +527,7 @@ namespace Med_Map.Controllers
 
                     foreach (var file in nationalIds)
                     {
-                        string path = await fileService.SaveFileAsync(file, "National_Ids");
+                        string path = await fileService.SaveFileAsync(file, Constant.UploadFolders.NationalIds);
                         uploadedFiles.Add(path);
                         documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.NationalId });
                     }
@@ -542,7 +542,7 @@ namespace Med_Map.Controllers
 
                     foreach (var file in licenseImages)
                     {
-                        string path = await fileService.SaveFileAsync(file, "Pharmacy_Licenses");
+                        string path = await fileService.SaveFileAsync(file, Constant.UploadFolders.PharmacyLicenses);
                         uploadedFiles.Add(path);
                         documents.Add(new PharmacyDocument { FileUrl = path, Type = DocumentType.PharmacyLicense });
                     }

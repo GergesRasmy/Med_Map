@@ -85,7 +85,6 @@ public partial class Program
             app.MapScalarApiReference(options => options.OpenApiRoutePattern = "/swagger/{documentName}/swagger.json");
         }
         app.UseHttpsRedirection();
-        app.UseStaticFiles();
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();

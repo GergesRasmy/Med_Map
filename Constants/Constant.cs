@@ -24,5 +24,33 @@
             { ".gif", "image/gif" },{ ".bmp", "image/bmp" }
         };
         public const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
+
+        public static class UploadFolders
+        {
+            public const string CustomerAvatars  = "Customer_Avatars";
+            public const string NationalIds      = "National_Ids";
+            public const string PharmacyLicenses = "Pharmacy_Licenses";
+            public const string MedicineImages   = "Medicine_Images";
+
+            // disk folder → API route segment
+            public static readonly IReadOnlyDictionary<string, string> ToApiRoute =
+                new Dictionary<string, string>
+                {
+                    { CustomerAvatars,  "avatars"        },
+                    { NationalIds,      "national-ids"   },
+                    { PharmacyLicenses, "licenses"       },
+                    { MedicineImages,   "medicine-images" },
+                };
+
+            // API route segment → disk folder (reverse of above)
+            public static readonly IReadOnlyDictionary<string, string> FromApiRoute =
+                new Dictionary<string, string>
+                {
+                    { "avatars",         CustomerAvatars  },
+                    { "national-ids",    NationalIds      },
+                    { "licenses",        PharmacyLicenses },
+                    { "medicine-images", MedicineImages   },
+                };
+        }
     }
 }

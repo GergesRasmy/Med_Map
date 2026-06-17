@@ -38,7 +38,7 @@ namespace Med_Map.Controllers
             string? imagePath = null;
             try
             {
-                imagePath = await fileService.SaveFileAsync(medicine.image, "Medicine_Images");
+                imagePath = await fileService.SaveFileAsync(medicine.image, Constant.UploadFolders.MedicineImages);
             }
             catch (Exception ex)
             {
@@ -95,7 +95,7 @@ namespace Med_Map.Controllers
                 string imageUrl;
                 try
                 {
-                    imageUrl = await fileService.SaveFileAsync(NewMedicine.image, "Medicine_Images");
+                    imageUrl = await fileService.SaveFileAsync(NewMedicine.image, Constant.UploadFolders.MedicineImages);
                 }
                 catch (Exception)
                 {
