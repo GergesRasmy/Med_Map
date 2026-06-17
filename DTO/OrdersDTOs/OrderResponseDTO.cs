@@ -12,5 +12,7 @@
         public string status { get; set; }
         public List<OrderItemResponseDTO> items { get; set; }
         public string fulfillmentType { get; set; }
+        public string? phoneNumber { get; set; }
+        public string? deliveryAddress { get; set; }
     }
 }

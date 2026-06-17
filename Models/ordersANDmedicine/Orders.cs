@@ -41,6 +41,8 @@ namespace Med_Map.Models.ordersANDmedicine
         public FulfillmentType FulfillmentType { get; set; }
         [Required]
         public Point DeliveryAddress { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? DeliveryAddressText { get; set; }
         [Required]
         [Column(TypeName = "decimal(18,2)")]
         public decimal ItemsSubtotal { get; set; }

@@ -67,9 +67,12 @@ namespace Med_Map.Controllers
                     displayName = user.displayName ?? "",
                     email = user.Email ?? "",
                     phoneNumber = user.PhoneNumber,
-                    address = customer.address ,
+                    address = customer.address,
+                    latitude = customer.Latitude,
+                    longitude = customer.Longitude,
+                    avatarUrl = user.AvatarUrl,
                     birthDate = customer.BirthDate,
-                    medicalHistory = customer.MedicalHistory 
+                    medicalHistory = customer.MedicalHistory
                 };
                 return SuccessResponse(data, "Customer retrieved successfully", SuccessCodes.DataRetrieved);
             }

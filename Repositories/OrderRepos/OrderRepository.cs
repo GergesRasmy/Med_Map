@@ -14,7 +14,7 @@
             _context.Orders.Add(order);
         }
 
-        public async Task<(List<Orders> items, int totalCount)> GetAllOrdersAsync(string id, string role, int page, int pageSize)
+        public async Task<(List<Orders> items, int totalCount)> GetAllOrdersAsync(string id, string role, int page, int pageSize, StatusList? status = null)
         {
             IQueryable<Orders> query = _context.Orders.AsNoTracking()
                 .Include(o => o.OrderItems)
@@ -27,11 +27,36 @@
                 _ => query.Where(_ => false)
             };
 
+            if (status.HasValue)
+                query = query.Where(o => o.Status == status.Value);
+
             query = query.OrderByDescending(o => o.CreatedAt);
 
             var totalCount = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
             return (items, totalCount);
+        }
+
+        public async Task<OrderStatsDTO> GetOrderStatsAsync(string id, string role)
+        {
+            IQueryable<Orders> query = _context.Orders.AsNoTracking();
+
+            query = role switch
+            {
+                "Pharmacy" => query.Where(o => o.PharmacyUserId == id),
+                "Customer" => query.Where(o => o.CustomerId == id),
+                _ => query.Where(_ => false)
+            };
+
+            var today = DateTime.UtcNow.Date;
+
+            return new OrderStatsDTO
+            {
+                newOrders      = await query.CountAsync(o => o.Status == StatusList.Recorded),
+                preparing      = await query.CountAsync(o => o.Status == StatusList.Packaged),
+                outForDelivery = await query.CountAsync(o => o.Status == StatusList.OutForDelivery),
+                completedToday = await query.CountAsync(o => o.Status == StatusList.Delivered && o.DeliveredAt >= today)
+            };
         }
         public async Task<Orders?> GetOrderByIdAsync(string orderId)
         {

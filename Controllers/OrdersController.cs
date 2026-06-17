@@ -55,6 +55,9 @@ namespace Med_Map.Controllers
             if (!Enum.TryParse<FulfillmentType>(orderDTO.fulfillmentType, true, out var fulfillment))
                 return ErrorResponse("Invalid fulfillment type", ErrorCodes.InvalidInput);
 
+            if (fulfillment == FulfillmentType.Delivery && string.IsNullOrWhiteSpace(orderDTO.deliveryAddress))
+                return ErrorResponse("Delivery address is required for delivery orders", ErrorCodes.ValidationError);
+
             if (orderDTO.items == null || !orderDTO.items.Any())
                 return ErrorResponse("Order must contain at least one item", ErrorCodes.ValidationError);
 
@@ -69,6 +72,8 @@ namespace Med_Map.Controllers
                 CustomerId = userId,
                 PharmacyUserId = orderDTO.pharmacyId,
                 DeliveryAddress = location,
+                PhoneNumber = orderDTO.phoneNumber,
+                DeliveryAddressText = orderDTO.deliveryAddress,
                 PaymentType = paymentType,
                 Status = paymentType == PaymentOptions.Online ? StatusList.Pending : StatusList.Recorded,
                 CreatedAt = DateTime.UtcNow,
@@ -288,10 +293,29 @@ namespace Med_Map.Controllers
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
         }
         [Authorize]
-        [HttpGet("myOrders")]                   //api/order/myOrders?page=1&pageSize=10
+        [HttpGet("stats")]                      //api/order/stats
+        [ProducesResponseType(typeof(SuccessResponseDTO<OrderStatsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> GetOrderStats()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+            if (!user.IsActive) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
+
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
+
+            var stats = await orderRepository.GetOrderStatsAsync(userId, role);
+            return SuccessResponse(stats, "Stats retrieved successfully", SuccessCodes.DataRetrieved);
+        }
+        [Authorize]
+        [HttpGet("myOrders")]                   //api/order/myOrders?page=1&pageSize=10&status=Recorded
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<OrderResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> getMyOrders([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> getMyOrders([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? status = null)
         {
             if (page < 1) page = 1;
             if (pageSize > 50) pageSize = 50;
@@ -306,7 +330,15 @@ namespace Med_Map.Controllers
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
             if (string.IsNullOrEmpty(role)) return ErrorResponse("Role not found", ErrorCodes.Unauthorized);
 
-            var (orders, totalCount) = await orderRepository.GetAllOrdersAsync(userId, role, page, pageSize);
+            StatusList? statusFilter = null;
+            if (!string.IsNullOrEmpty(status))
+            {
+                if (!Enum.TryParse<StatusList>(status, true, out var parsed))
+                    return ErrorResponse($"Invalid status value. Valid values: {string.Join(", ", Enum.GetNames<StatusList>())}", ErrorCodes.InvalidInput);
+                statusFilter = parsed;
+            }
+
+            var (orders, totalCount) = await orderRepository.GetAllOrdersAsync(userId, role, page, pageSize, statusFilter);
 
             var response = new PagedDTO<OrderResponseDTO>
             {
@@ -384,7 +416,9 @@ namespace Med_Map.Controllers
                     Quantity = oi.Quantity,
                     UnitPrice = oi.unitPrice
                 }).ToList(),
-                fulfillmentType = order.FulfillmentType.ToString()
+                fulfillmentType = order.FulfillmentType.ToString(),
+                phoneNumber = order.PhoneNumber,
+                deliveryAddress = order.DeliveryAddressText
             };
         }
 
