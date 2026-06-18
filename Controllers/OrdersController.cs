@@ -283,11 +283,11 @@ namespace Med_Map.Controllers
             if (nextStatus == StatusList.Delivered && order.PaymentType == PaymentOptions.Online)
             {
                 var wallet = await walletRepository.GetByPharmacyUserIdAsync(userId);
-                if (wallet != null)
-                {
-                    var pharmacyShare = order.ItemsSubtotal + order.DeliveryFee;
-                    await walletTransactionRepository.DepositAsync(wallet.Id, pharmacyShare, wallet.Currency, order.Id);
-                }
+                if (wallet == null)
+                    return ErrorResponse("Pharmacy wallet not found. Contact support.", ErrorCodes.DataNotFound);
+
+                var pharmacyShare = order.ItemsSubtotal + order.DeliveryFee;
+                await walletTransactionRepository.DepositAsync(wallet.Id, pharmacyShare, wallet.Currency, order.Id);
             }
 
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
