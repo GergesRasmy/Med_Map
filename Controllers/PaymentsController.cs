@@ -15,19 +15,22 @@ namespace Med_Map.Controllers
         private readonly IKashierService kashierService;
         private readonly IConfiguration configuration;
         private readonly ILogger<PaymentsController> logger;
+        private readonly IHubContext<NotificationHub, INotificationClient> hub;
 
         public PaymentsController(
             IPaymentRepository paymentRepository,
             IOrderRepository orderRepository,
             IKashierService kashierService,
             IConfiguration configuration,
-            ILogger<PaymentsController> logger)
+            ILogger<PaymentsController> logger,
+            IHubContext<NotificationHub, INotificationClient> hub)
         {
             this.paymentRepository = paymentRepository;
             this.orderRepository = orderRepository;
             this.kashierService = kashierService;
             this.configuration = configuration;
             this.logger = logger;
+            this.hub = hub;
         }
         #endregion
 
@@ -226,6 +229,24 @@ namespace Med_Map.Controllers
                 }
 
                 await paymentRepository.SaveChangesAsync();
+
+                if (success)
+                {
+                    foreach (var po in payment.PaymentOrders)
+                    {
+                        if (po.Order == null) continue;
+
+                        // Notify the customer: payment confirmed, order is now being processed
+                        await hub.Clients.User(po.Order.CustomerId).OrderStatusChanged(
+                            new OrderStatusChangedPayload(po.Order.Id, StatusList.Recorded.ToString(), po.Order.FulfillmentType.ToString()));
+
+                        // Notify the pharmacy: a paid online order has arrived and is ready to process
+                        await hub.Clients.User(po.Order.PharmacyUserId).OrderPlaced(
+                            new OrderPlacedPayload(po.Order.Id, po.Order.CustomerId, po.Order.TotalAmount,
+                                po.Order.OrderItems?.Count ?? 0, po.Order.FulfillmentType.ToString(), po.Order.CreatedAt));
+                    }
+                }
+
                 return Ok();
             }
             catch (Exception ex)

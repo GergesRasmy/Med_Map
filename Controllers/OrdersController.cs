@@ -24,10 +24,12 @@ namespace Med_Map.Controllers
         private readonly IUnitOfWork unitOfWork;
         private readonly IWalletRepository walletRepository;
         private readonly IWalletTransactionRepository walletTransactionRepository;
+        private readonly IHubContext<NotificationHub, INotificationClient> hub;
 
         public OrdersController(UserManager<ApplicationUser> userManager, IOrderRepository orderRepository, IPharmacyRepository pharmacyRepository,
                                 IPharmacyInventoryRepository pharmacyInventoryRepository, IUnitOfWork unitOfWork,
-                                IWalletRepository walletRepository, IWalletTransactionRepository walletTransactionRepository)
+                                IWalletRepository walletRepository, IWalletTransactionRepository walletTransactionRepository,
+                                IHubContext<NotificationHub, INotificationClient> hub)
         {
             this.userManager = userManager;
             this.orderRepository = orderRepository;
@@ -36,6 +38,7 @@ namespace Med_Map.Controllers
             this.unitOfWork = unitOfWork;
             this.walletRepository = walletRepository;
             this.walletTransactionRepository = walletTransactionRepository;
+            this.hub = hub;
         }
         #endregion
         [Authorize(Roles = RoleConstants.Names.Customer)]
@@ -131,6 +134,19 @@ namespace Med_Map.Controllers
                 await unitOfWork.RollbackAsync();
                 return ErrorResponse("Failed to place order", ErrorCodes.DataBaseError, ex.Message);
             }
+
+            // For online orders, OrderPlaced fires from the payment webhook once payment is confirmed —
+            // firing here too would double-notify the pharmacy before payment succeeds.
+            if (paymentType == PaymentOptions.Cash)
+                await hub.Clients.User(orderDTO.pharmacyId).OrderPlaced(new OrderPlacedPayload(
+                    newOrder.Id, userId, newOrder.TotalAmount, orderDTO.items.Count,
+                    fulfillment.ToString(), newOrder.CreatedAt));
+
+            // Stock is deducted immediately regardless of payment type, so always notify inventory change
+            var stockChanges = orderDTO.items
+                .Select(i => new StockChange(i.medicineId, inventoryCache[i.medicineId].Medicine?.TradeName ?? string.Empty, inventoryCache[i.medicineId].StockQuantity))
+                .ToList();
+            await hub.Clients.User(orderDTO.pharmacyId).InventoryStockChanged(new InventoryStockChangedPayload(stockChanges));
 
             return SuccessResponse(MapOrderToResponseDTO(newOrder), "Order created successfully", SuccessCodes.DataCreated);
         }
@@ -280,6 +296,10 @@ namespace Med_Map.Controllers
             order.Status = nextStatus;
             await orderRepository.UpdateStatusAsync(order.Id, nextStatus, nextStatus == StatusList.Delivered ? DateTime.UtcNow : null);
 
+            // Notify the customer: their order moved to a new status
+            await hub.Clients.User(order.CustomerId).OrderStatusChanged(
+                new OrderStatusChangedPayload(order.Id, nextStatus.ToString(), order.FulfillmentType.ToString()));
+
             if (nextStatus == StatusList.Delivered && order.PaymentType == PaymentOptions.Online)
             {
                 var wallet = await walletRepository.GetByPharmacyUserIdAsync(userId);
@@ -288,6 +308,10 @@ namespace Med_Map.Controllers
 
                 var pharmacyShare = order.ItemsSubtotal + order.DeliveryFee;
                 await walletTransactionRepository.DepositAsync(wallet.Id, pharmacyShare, wallet.Currency, order.Id);
+
+                // Notify the pharmacy: their wallet was credited for this delivery
+                await hub.Clients.User(userId).WalletDeposited(
+                    new WalletDepositedPayload(wallet.Id, pharmacyShare, wallet.Currency.ToString(), order.Id));
             }
 
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
@@ -390,11 +414,19 @@ namespace Med_Map.Controllers
             if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
+            // Load order before cancelling so we know which pharmacy to notify
+            var order = await orderRepository.GetOrderByIdAsync(orderId);
+            if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
+
             var success = await orderRepository.CancelOrder(orderId, userId);
 
             if (!success)
                 return ErrorResponse("Order cannot be cancelled at this stage.", ErrorCodes.InvalidAction);
-            
+
+            // Notify the pharmacy: a customer cancelled their order
+            await hub.Clients.User(order.PharmacyUserId).OrderCancelled(
+                new OrderCancelledPayload(order.Id, userId));
+
             return SuccessResponse("Order cancelled successfully", SuccessCodes.DataUpdated);
         }
         // Helper method to map Order to OrderResponseDTO

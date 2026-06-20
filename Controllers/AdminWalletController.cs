@@ -12,15 +12,18 @@ namespace Med_Map.Controllers
         private readonly IWalletTransactionRepository transactionRepository;
         private readonly IWalletRepository walletRepository;
         private readonly IUnitOfWork unitOfWork;
+        private readonly IHubContext<NotificationHub, INotificationClient> hub;
 
         public AdminWalletController(
             IWalletTransactionRepository transactionRepository,
             IWalletRepository walletRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IHubContext<NotificationHub, INotificationClient> hub)
         {
             this.transactionRepository = transactionRepository;
             this.walletRepository = walletRepository;
             this.unitOfWork = unitOfWork;
+            this.hub = hub;
         }
 
         [HttpGet("withdrawals")]
@@ -52,6 +55,10 @@ namespace Med_Map.Controllers
             if (transaction.Type != TransactionType.Withdrawal || transaction.Status != TransactionStatus.Pending)
                 return ErrorResponse("Transaction is not a pending withdrawal.", ErrorCodes.InvalidAction);
 
+            var wallet = await walletRepository.GetByIdAsync(transaction.WalletId);
+            if (wallet == null)
+                return ErrorResponse("Wallet not found.", ErrorCodes.DataNotFound);
+
             using var tx = await unitOfWork.BeginTransactionAsync();
             try
             {
@@ -65,6 +72,10 @@ namespace Med_Map.Controllers
                 await unitOfWork.RollbackAsync();
                 return ErrorResponse("Failed to complete withdrawal.", ErrorCodes.InternalServerError);
             }
+
+            // Notify the pharmacy: their withdrawal request was processed
+            await hub.Clients.User(wallet.PharmacyUserId).WithdrawalCompleted(
+                new WithdrawalCompletedPayload(transaction.Id, wallet.Id));
 
             return SuccessResponse(MapToDTO(transaction), "Withdrawal marked as complete.", SuccessCodes.DataUpdated);
         }
@@ -101,6 +112,10 @@ namespace Med_Map.Controllers
                 await unitOfWork.RollbackAsync();
                 return ErrorResponse("Failed to cancel withdrawal.", ErrorCodes.InternalServerError);
             }
+
+            // Notify the pharmacy: withdrawal was rejected and the balance was refunded
+            await hub.Clients.User(wallet.PharmacyUserId).WithdrawalCancelled(
+                new WithdrawalCancelledPayload(transaction.Id, wallet.Id, transaction.Amount, wallet.Currency.ToString()));
 
             return SuccessResponse(MapToDTO(transaction), "Withdrawal cancelled and balance refunded.", SuccessCodes.DataUpdated);
         }

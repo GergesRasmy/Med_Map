@@ -28,8 +28,7 @@ global using Med_Map.DTO.PharmacyInventoryDTOs;
 global using Med_Map.DTO.WalletDTOs;
 global using Med_Map.Repositories.WalletRepos;
 global using Med_Map.Seeders;
-
-
-
-
+global using Med_Map.Hubs;
+global using Med_Map.DTO.NotificationDTOs;
+global using Microsoft.AspNetCore.SignalR;
 

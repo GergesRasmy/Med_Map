@@ -4,11 +4,15 @@ namespace Med_Map.Services
     {
         private readonly IServiceScopeFactory scopeFactory;
         private readonly ILogger<PendingOrderExpiryService> logger;
+        // IHubContext is singleton — safe to inject directly into a BackgroundService
+        private readonly IHubContext<NotificationHub, INotificationClient> hub;
 
-        public PendingOrderExpiryService(IServiceScopeFactory scopeFactory, ILogger<PendingOrderExpiryService> logger)
+        public PendingOrderExpiryService(IServiceScopeFactory scopeFactory, ILogger<PendingOrderExpiryService> logger,
+                                         IHubContext<NotificationHub, INotificationClient> hub)
         {
             this.scopeFactory = scopeFactory;
             this.logger = logger;
+            this.hub = hub;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -39,6 +43,7 @@ namespace Med_Map.Services
             foreach (var order in expiredOrders)
             {
                 using var transaction = await context.Database.BeginTransactionAsync();
+                bool committed = false;
                 try
                 {
                     foreach (var item in order.OrderItems)
@@ -53,13 +58,27 @@ namespace Med_Map.Services
                     order.Status = StatusList.Canceled;
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
-
-                    logger.LogInformation("Expired pending order {OrderId} cancelled and stock restored.", order.Id);
+                    committed = true;
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
                     logger.LogError(ex, "Failed to expire pending order {OrderId}.", order.Id);
+                }
+
+                // Notifications are outside the try/catch so a hub failure can't
+                // trigger a rollback on an already-committed transaction.
+                if (committed)
+                {
+                    logger.LogInformation("Expired pending order {OrderId} cancelled and stock restored.", order.Id);
+
+                    // Notify the customer: their unpaid order was auto-cancelled
+                    await hub.Clients.User(order.CustomerId).OrderStatusChanged(
+                        new OrderStatusChangedPayload(order.Id, StatusList.Canceled.ToString(), order.FulfillmentType.ToString()));
+
+                    // Notify the pharmacy: a pending order was cancelled and stock was restored
+                    await hub.Clients.User(order.PharmacyUserId).OrderCancelled(
+                        new OrderCancelledPayload(order.Id, order.CustomerId));
                 }
             }
         }
