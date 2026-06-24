@@ -38,6 +38,7 @@ public partial class Program
         builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
         builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
         builder.Services.AddScoped<IPharmacyInventoryRepository, PharmacyInventoryRepository>();
+        builder.Services.AddScoped<IPharmacyServiceRepository, PharmacyServiceRepository>();
         builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
         builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();

@@ -128,8 +128,26 @@ namespace Med_Map.Seeders
                     });
                 }
                 await context.SaveChangesAsync();
+
+                // 6 — Services catalog
+                var services = PharmacyServices(user.Id);
+                context.PharmacyServices.AddRange(services);
+                await context.SaveChangesAsync();
             }
         }
+
+        private static List<PharmacyService> PharmacyServices(string pharmacyUserId) =>
+        [
+            new() { PharmacyUserId = pharmacyUserId, Name = "Blood Pressure Measurement",         Price = 30m,  Description = "Quick and accurate blood pressure check using a digital sphygmomanometer." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Blood Glucose Test",                 Price = 40m,  Description = "Fingertip blood glucose reading using a calibrated glucometer." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Temperature Measurement",            Price = 20m,  Description = "Body temperature check using a digital thermometer." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Weight & BMI Calculation",           Price = 25m,  Description = "Weigh-in and Body Mass Index calculation with dietary guidance." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Blood Oxygen Saturation (SpO2)",     Price = 30m,  Description = "Pulse oximetry reading to measure blood oxygen saturation level." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Intramuscular / IV Injection",       Price = 80m,  Description = "Administration of prescribed IM or IV injections by a licensed nurse." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Wound Dressing & Drug Application", Price = 70m,  Description = "Professional wound cleaning, dressing change, and topical drug application." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Drug Interactions & Dosing Advice",  Price = 50m,  Description = "Pharmacist review of your current medications for interactions and correct dosing." },
+            new() { PharmacyUserId = pharmacyUserId, Name = "Prescription Interpretation",        Price = 45m,  Description = "Pharmacist explains your doctor's prescription and answers questions about your medications." },
+        ];
 
         private static (string idUrl, string licenseUrl) CopyDocuments(IWebHostEnvironment env, string idFile, string licenseFile)
         {
