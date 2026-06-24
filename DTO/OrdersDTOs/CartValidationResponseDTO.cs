@@ -10,7 +10,7 @@ namespace Med_Map.DTO.OrdersDTOs
         public List<PharmacyCartValidationResultDTO> pharmacies { get; set; } = new();
         public CartFeesDTO fees { get; set; } = new();
 
-        /// <summary>True when every pharmacy in the cart is valid (exists, active, all items in stock).</summary>
+        /// <summary>True when every pharmacy in the cart is valid (exists, active, all items available).</summary>
         public bool isValid => pharmacies.All(p => p.isValid);
     }
 
@@ -29,17 +29,24 @@ namespace Med_Map.DTO.OrdersDTOs
         /// <summary>Sum of (currentUnitPrice × requestedQuantity) over available items. Excludes fees.</summary>
         public decimal subtotal { get; set; }
 
-        /// <summary>True when the pharmacy was found and every item is available at the requested quantity.</summary>
+        /// <summary>True when the pharmacy was found and every item is available.</summary>
         public bool isValid { get; set; }
     }
 
     public class CartItemValidationResultDTO
     {
-        public Guid medicineId { get; set; }
+        public string type { get; set; } = "medicine"; // "medicine" | "service"
+
+        // medicine fields (null for service items)
+        public Guid? medicineId { get; set; }
         public string? tradeName { get; set; }
         public string? genericName { get; set; }
 
-        /// <summary>Current price from the pharmacy inventory (null if the medicine is no longer stocked).</summary>
+        // service fields (null for medicine items)
+        public Guid? serviceId { get; set; }
+        public string? serviceName { get; set; }
+
+        /// <summary>Current price from inventory or service catalog (null if not found).</summary>
         public decimal? currentUnitPrice { get; set; }
         /// <summary>Price the client had cached; echoed back for diffing.</summary>
         public decimal? previousUnitPrice { get; set; }
@@ -47,9 +54,8 @@ namespace Med_Map.DTO.OrdersDTOs
         public string? priceUnitIsoCode { get; set; }
 
         public int requestedQuantity { get; set; }
-        /// <summary>Current stock at the pharmacy (0 if not stocked).</summary>
+        /// <summary>For medicines: current stock. For services: always equals requestedQuantity (no stock limit).</summary>
         public int availableQuantity { get; set; }
-        /// <summary>True when the medicine is stocked with enough quantity to fulfil the request.</summary>
         public bool isAvailable { get; set; }
 
         /// <summary>currentUnitPrice × requestedQuantity, or 0 when unavailable.</summary>

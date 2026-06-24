@@ -1,4 +1,4 @@
-﻿namespace Med_Map.Repositories.OrderRepos
+namespace Med_Map.Repositories.OrderRepos
 {
     public class OrderRepository: IOrderRepository
     {
@@ -18,7 +18,9 @@
         {
             IQueryable<Orders> query = _context.Orders.AsNoTracking()
                 .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Medicine);
+                    .ThenInclude(oi => oi.Medicine)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Service);
 
             query = role switch
             {
@@ -58,19 +60,25 @@
                 completedToday = await query.CountAsync(o => o.Status == StatusList.Delivered && o.DeliveredAt >= today)
             };
         }
+
         public async Task<Orders?> GetOrderByIdAsync(string orderId)
         {
             if (!Guid.TryParse(orderId, out var guid)) return null;
 
-            return await _context.Orders.AsNoTracking().Include(o => o.OrderItems)
-                                        .ThenInclude(oi => oi.Medicine)
-                                        .FirstOrDefaultAsync(o => o.Id == guid);
+            return await _context.Orders.AsNoTracking()
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Medicine)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Service)
+                .FirstOrDefaultAsync(o => o.Id == guid);
         }
+
         public async Task UpdateAsync(Orders order)
         {
             _context.Orders.Update(order);
             await SaveChangesAsync();
         }
+
         public async Task<bool> UpdateStatusAsync(Guid orderId, StatusList nextStatus, DateTime? deliveredAt = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -82,18 +90,16 @@
 
                 if (order == null) return false;
 
-                // If moving TO Canceled, we must restore the stock
+                // Restore stock only for medicine items when cancelling
                 if (nextStatus == StatusList.Canceled && order.Status != StatusList.Canceled)
                 {
-                    foreach (var item in order.OrderItems)
+                    foreach (var item in order.OrderItems.Where(i => i.MedicineId.HasValue))
                     {
                         var inventory = await _context.PharmacyInventory
                             .FirstOrDefaultAsync(pi => pi.PharmacyUserId == order.PharmacyUserId
                                                     && pi.MedicineId == item.MedicineId);
                         if (inventory != null)
-                        {
                             inventory.StockQuantity += item.Quantity;
-                        }
                     }
                 }
 
@@ -112,6 +118,7 @@
                 return false;
             }
         }
+
         public async Task<bool> CancelOrder(string orderId, string userId)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -127,20 +134,19 @@
                 if (order == null)
                     return false;
 
-                // Block cancellation on terminal or in-progress states
                 var nonCancellableStatuses = new[]
                 {
                     StatusList.Delivered,
                     StatusList.Canceled,
-                    StatusList.OutForDelivery,  // already on the way, too late
-                    StatusList.ReadyForPickup   // already prepared, too late
+                    StatusList.OutForDelivery,
+                    StatusList.ReadyForPickup
                 };
 
                 if (nonCancellableStatuses.Contains(order.Status))
                     return false;
 
-                // Restore stock
-                foreach (var item in order.OrderItems)
+                // Restore stock only for medicine items
+                foreach (var item in order.OrderItems.Where(i => i.MedicineId.HasValue))
                 {
                     var inventory = await _context.PharmacyInventory
                         .FirstOrDefaultAsync(pi => pi.PharmacyUserId == order.PharmacyUserId
@@ -161,7 +167,6 @@
                 return false;
             }
         }
-
 
         public async Task SaveChangesAsync()
         {

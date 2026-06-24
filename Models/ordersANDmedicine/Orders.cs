@@ -25,7 +25,9 @@ namespace Med_Map.Models.ordersANDmedicine
     public enum FulfillmentType
     {
         Delivery = 1,
-        Pickup = 2
+        Pickup = 2,
+        ServiceAtPharmacy = 3,
+        ServiceAtHome = 4
     }
     public class Orders
     {

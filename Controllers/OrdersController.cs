@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,26 +21,29 @@ namespace Med_Map.Controllers
         private readonly IOrderRepository orderRepository;
         private readonly IPharmacyRepository pharmacyRepository;
         private readonly IPharmacyInventoryRepository pharmacyInventoryRepository;
+        private readonly IPharmacyServiceRepository pharmacyServiceRepository;
         private readonly IUnitOfWork unitOfWork;
         private readonly IWalletRepository walletRepository;
         private readonly IWalletTransactionRepository walletTransactionRepository;
         private readonly IHubContext<NotificationHub, INotificationClient> hub;
 
         public OrdersController(UserManager<ApplicationUser> userManager, IOrderRepository orderRepository, IPharmacyRepository pharmacyRepository,
-                                IPharmacyInventoryRepository pharmacyInventoryRepository, IUnitOfWork unitOfWork,
-                                IWalletRepository walletRepository, IWalletTransactionRepository walletTransactionRepository,
+                                IPharmacyInventoryRepository pharmacyInventoryRepository, IPharmacyServiceRepository pharmacyServiceRepository,
+                                IUnitOfWork unitOfWork, IWalletRepository walletRepository, IWalletTransactionRepository walletTransactionRepository,
                                 IHubContext<NotificationHub, INotificationClient> hub)
         {
             this.userManager = userManager;
             this.orderRepository = orderRepository;
             this.pharmacyRepository = pharmacyRepository;
             this.pharmacyInventoryRepository = pharmacyInventoryRepository;
+            this.pharmacyServiceRepository = pharmacyServiceRepository;
             this.unitOfWork = unitOfWork;
             this.walletRepository = walletRepository;
             this.walletTransactionRepository = walletTransactionRepository;
             this.hub = hub;
         }
         #endregion
+
         [Authorize(Roles = RoleConstants.Names.Customer)]
         [HttpPost("place")]                     //api/order/place
         [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
@@ -58,11 +61,26 @@ namespace Med_Map.Controllers
             if (!Enum.TryParse<FulfillmentType>(orderDTO.fulfillmentType, true, out var fulfillment))
                 return ErrorResponse("Invalid fulfillment type", ErrorCodes.InvalidInput);
 
+            if (orderDTO.items == null || !orderDTO.items.Any())
+                return ErrorResponse("Order must contain at least one item", ErrorCodes.ValidationError);
+
+            // Enforce no mixed orders
+            var isServiceOrder = orderDTO.items.All(i => i.type == "service");
+            var isMedicineOrder = orderDTO.items.All(i => i.type == "medicine");
+            if (!isServiceOrder && !isMedicineOrder)
+                return ErrorResponse("An order cannot mix medicine and service items", ErrorCodes.ValidationError);
+
+            if (isServiceOrder && fulfillment != FulfillmentType.ServiceAtPharmacy && fulfillment != FulfillmentType.ServiceAtHome)
+                return ErrorResponse("Service orders must use ServiceAtPharmacy or ServiceAtHome fulfillment", ErrorCodes.ValidationError);
+
+            if (isMedicineOrder && (fulfillment == FulfillmentType.ServiceAtPharmacy || fulfillment == FulfillmentType.ServiceAtHome))
+                return ErrorResponse("Medicine orders cannot use service fulfillment types", ErrorCodes.ValidationError);
+
             if (fulfillment == FulfillmentType.Delivery && string.IsNullOrWhiteSpace(orderDTO.deliveryAddress))
                 return ErrorResponse("Delivery address is required for delivery orders", ErrorCodes.ValidationError);
 
-            if (orderDTO.items == null || !orderDTO.items.Any())
-                return ErrorResponse("Order must contain at least one item", ErrorCodes.ValidationError);
+            if (fulfillment == FulfillmentType.ServiceAtHome && string.IsNullOrWhiteSpace(orderDTO.deliveryAddress))
+                return ErrorResponse("Address is required for home service orders", ErrorCodes.ValidationError);
 
             var targetPharmacy = await pharmacyRepository.GetByIdAsync(orderDTO.pharmacyId);
             if (targetPharmacy?.ActiveProfile == null)
@@ -83,26 +101,55 @@ namespace Med_Map.Controllers
                 OrderItems = new List<OrderItem>(),
                 FulfillmentType = fulfillment
             };
-            // Validate everything BEFORE opening the transaction
+
             decimal itemsSubtotal = 0;
             var inventoryCache = new Dictionary<Guid, PharmacyInventory>();
-            foreach (var item in orderDTO.items)
-            {
-                var inventory = await pharmacyInventoryRepository
-                    .GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId);
-                if (inventory == null)
-                    return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
-                if (inventory.StockQuantity < item.quantity)
-                    return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
 
-                newOrder.OrderItems.Add(new OrderItem
+            // Validate everything BEFORE opening the transaction
+            if (isMedicineOrder)
+            {
+                foreach (var item in orderDTO.items)
                 {
-                    MedicineId = item.medicineId,
-                    Quantity = item.quantity,
-                    unitPrice = inventory.Price
-                });
-                inventoryCache[item.medicineId] = inventory;
-                itemsSubtotal += item.quantity * inventory.Price;
+                    if (item.medicineId == null)
+                        return ErrorResponse("medicineId is required for medicine items", ErrorCodes.ValidationError);
+
+                    var inventory = await pharmacyInventoryRepository
+                        .GetPharmacyMedicineAsync(orderDTO.pharmacyId, item.medicineId.Value);
+                    if (inventory == null)
+                        return ErrorResponse("Medicine not in pharmacy inventory", ErrorCodes.DataNotFound);
+                    if (inventory.StockQuantity < item.quantity)
+                        return ErrorResponse($"Not enough stock for {inventory.Medicine.TradeName}", ErrorCodes.InsufficientStock);
+
+                    newOrder.OrderItems.Add(new OrderItem
+                    {
+                        MedicineId = item.medicineId.Value,
+                        Quantity = item.quantity,
+                        unitPrice = inventory.Price
+                    });
+                    inventoryCache[item.medicineId.Value] = inventory;
+                    itemsSubtotal += item.quantity * inventory.Price;
+                }
+            }
+            else // service order
+            {
+                foreach (var item in orderDTO.items)
+                {
+                    if (item.serviceId == null)
+                        return ErrorResponse("serviceId is required for service items", ErrorCodes.ValidationError);
+
+                    var service = await pharmacyServiceRepository.GetByIdForPharmacyAsync(item.serviceId.Value, orderDTO.pharmacyId);
+                    if (service == null || !service.IsActive)
+                        return ErrorResponse("Service not available at this pharmacy", ErrorCodes.DataNotFound);
+
+                    newOrder.OrderItems.Add(new OrderItem
+                    {
+                        ServiceId = item.serviceId.Value,
+                        Service = service,     // populate nav so the response has the service name
+                        Quantity = item.quantity,
+                        unitPrice = service.Price
+                    });
+                    itemsSubtotal += item.quantity * service.Price;
+                }
             }
 
             var deliveryFee = fulfillment == FulfillmentType.Delivery
@@ -123,10 +170,17 @@ namespace Med_Map.Controllers
             {
                 orderRepository.Insert(newOrder);
 
-                foreach (var item in orderDTO.items)
-                    inventoryCache[item.medicineId].StockQuantity -= item.quantity;
+                if (isMedicineOrder)
+                {
+                    foreach (var item in orderDTO.items)
+                        inventoryCache[item.medicineId!.Value].StockQuantity -= item.quantity;
+                    await pharmacyInventoryRepository.SaveChangesAsync();
+                }
+                else
+                {
+                    await orderRepository.SaveChangesAsync();
+                }
 
-                await pharmacyInventoryRepository.SaveChangesAsync();
                 await unitOfWork.CommitAsync();
             }
             catch (Exception ex)
@@ -135,21 +189,22 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Failed to place order", ErrorCodes.DataBaseError, ex.Message);
             }
 
-            // For online orders, OrderPlaced fires from the payment webhook once payment is confirmed —
-            // firing here too would double-notify the pharmacy before payment succeeds.
             if (paymentType == PaymentOptions.Cash)
                 await hub.Clients.User(orderDTO.pharmacyId).OrderPlaced(new OrderPlacedPayload(
                     newOrder.Id, userId, newOrder.TotalAmount, orderDTO.items.Count,
                     fulfillment.ToString(), newOrder.CreatedAt));
 
-            // Stock is deducted immediately regardless of payment type, so always notify inventory change
-            var stockChanges = orderDTO.items
-                .Select(i => new StockChange(i.medicineId, inventoryCache[i.medicineId].Medicine?.TradeName ?? string.Empty, inventoryCache[i.medicineId].StockQuantity))
-                .ToList();
-            await hub.Clients.User(orderDTO.pharmacyId).InventoryStockChanged(new InventoryStockChangedPayload(stockChanges));
+            if (isMedicineOrder)
+            {
+                var stockChanges = orderDTO.items
+                    .Select(i => new StockChange(i.medicineId!.Value, inventoryCache[i.medicineId.Value].Medicine?.TradeName ?? string.Empty, inventoryCache[i.medicineId.Value].StockQuantity))
+                    .ToList();
+                await hub.Clients.User(orderDTO.pharmacyId).InventoryStockChanged(new InventoryStockChangedPayload(stockChanges));
+            }
 
             return SuccessResponse(MapOrderToResponseDTO(newOrder), "Order created successfully", SuccessCodes.DataCreated);
         }
+
         [Authorize(Roles = RoleConstants.Names.Customer)]
         [HttpPost("validate-cart")]             //api/order/validate-cart
         [ProducesResponseType(typeof(SuccessResponseDTO<CartValidationResponseDTO>), 200)]
@@ -184,13 +239,15 @@ namespace Med_Map.Controllers
                 {
                     result.found = false;
                     result.isValid = false;
-                    // still echo the requested items back so the client can show them as unavailable
                     foreach (var item in cart.items ?? new List<CartItemValidationDTO>())
                         result.items.Add(new CartItemValidationResultDTO
                         {
+                            type = item.type,
                             medicineId = item.medicineId,
+                            serviceId = item.serviceId,
                             tradeName = item.tradeName,
                             genericName = item.genericName,
+                            serviceName = item.serviceName,
                             previousUnitPrice = item.unitPrice,
                             priceUnitIsoCode = item.priceUnitIsoCode,
                             requestedQuantity = item.quantity,
@@ -210,54 +267,112 @@ namespace Med_Map.Controllers
 
                 bool allItemsOk = true;
                 decimal subtotal = 0;
+
                 foreach (var item in cart.items ?? new List<CartItemValidationDTO>())
                 {
-                    var inventory = await pharmacyInventoryRepository
-                        .GetPharmacyMedicineWithDetailsAsync(cart.pharmacyId, item.medicineId);
-
-                    var itemResult = new CartItemValidationResultDTO
+                    if (item.type == "service")
                     {
-                        medicineId = item.medicineId,
-                        requestedQuantity = item.quantity,
-                        previousUnitPrice = item.unitPrice,
-                        priceUnitIsoCode = item.priceUnitIsoCode,
-                        tradeName = item.tradeName,
-                        genericName = item.genericName
-                    };
-
-                    if (inventory == null)
-                    {
-                        itemResult.availableQuantity = 0;
-                        itemResult.isAvailable = false;
-                        itemResult.lineTotal = 0;
-                        itemResult.message = "No longer available at this pharmacy";
-                        allItemsOk = false;
-                    }
-                    else
-                    {
-                        itemResult.tradeName = inventory.Medicine?.TradeName ?? item.tradeName;
-                        itemResult.genericName = inventory.Medicine?.GenericName ?? item.genericName;
-                        itemResult.currentUnitPrice = inventory.Price;
-                        itemResult.priceChanged = item.unitPrice.HasValue && item.unitPrice.Value != inventory.Price;
-                        itemResult.availableQuantity = inventory.StockQuantity;
-                        itemResult.isAvailable = inventory.StockQuantity >= item.quantity;
-                        itemResult.lineTotal = itemResult.isAvailable ? inventory.Price * item.quantity : 0;
-
-                        if (!itemResult.isAvailable)
+                        var itemResult = new CartItemValidationResultDTO
                         {
-                            itemResult.message = inventory.StockQuantity == 0
-                                ? "Out of stock"
-                                : $"Only {inventory.StockQuantity} in stock";
+                            type = "service",
+                            serviceId = item.serviceId,
+                            requestedQuantity = item.quantity,
+                            previousUnitPrice = item.unitPrice,
+                            priceUnitIsoCode = item.priceUnitIsoCode,
+                            serviceName = item.serviceName
+                        };
+
+                        if (item.serviceId == null)
+                        {
+                            itemResult.isAvailable = false;
+                            itemResult.message = "serviceId is required";
                             allItemsOk = false;
                         }
                         else
                         {
-                            subtotal += itemResult.lineTotal;
-                            if (itemResult.priceChanged) itemResult.message = "Price updated";
+                            var service = await pharmacyServiceRepository.GetByIdForPharmacyAsync(item.serviceId.Value, cart.pharmacyId);
+                            if (service == null || !service.IsActive)
+                            {
+                                itemResult.isAvailable = false;
+                                itemResult.availableQuantity = 0;
+                                itemResult.lineTotal = 0;
+                                itemResult.message = "Service no longer available at this pharmacy";
+                                allItemsOk = false;
+                            }
+                            else
+                            {
+                                itemResult.serviceName = service.Name;
+                                itemResult.currentUnitPrice = service.Price;
+                                itemResult.priceChanged = item.unitPrice.HasValue && item.unitPrice.Value != service.Price;
+                                itemResult.availableQuantity = item.quantity; // services have no stock limit
+                                itemResult.isAvailable = true;
+                                itemResult.lineTotal = service.Price * item.quantity;
+                                subtotal += itemResult.lineTotal;
+                                if (itemResult.priceChanged) itemResult.message = "Price updated";
+                            }
                         }
-                    }
 
-                    result.items.Add(itemResult);
+                        result.items.Add(itemResult);
+                    }
+                    else // medicine
+                    {
+                        var itemResult = new CartItemValidationResultDTO
+                        {
+                            type = "medicine",
+                            medicineId = item.medicineId,
+                            requestedQuantity = item.quantity,
+                            previousUnitPrice = item.unitPrice,
+                            priceUnitIsoCode = item.priceUnitIsoCode,
+                            tradeName = item.tradeName,
+                            genericName = item.genericName
+                        };
+
+                        if (item.medicineId == null)
+                        {
+                            itemResult.isAvailable = false;
+                            itemResult.message = "medicineId is required";
+                            allItemsOk = false;
+                        }
+                        else
+                        {
+                            var inventory = await pharmacyInventoryRepository
+                                .GetPharmacyMedicineWithDetailsAsync(cart.pharmacyId, item.medicineId.Value);
+
+                            if (inventory == null)
+                            {
+                                itemResult.availableQuantity = 0;
+                                itemResult.isAvailable = false;
+                                itemResult.lineTotal = 0;
+                                itemResult.message = "No longer available at this pharmacy";
+                                allItemsOk = false;
+                            }
+                            else
+                            {
+                                itemResult.tradeName = inventory.Medicine?.TradeName ?? item.tradeName;
+                                itemResult.genericName = inventory.Medicine?.GenericName ?? item.genericName;
+                                itemResult.currentUnitPrice = inventory.Price;
+                                itemResult.priceChanged = item.unitPrice.HasValue && item.unitPrice.Value != inventory.Price;
+                                itemResult.availableQuantity = inventory.StockQuantity;
+                                itemResult.isAvailable = inventory.StockQuantity >= item.quantity;
+                                itemResult.lineTotal = itemResult.isAvailable ? inventory.Price * item.quantity : 0;
+
+                                if (!itemResult.isAvailable)
+                                {
+                                    itemResult.message = inventory.StockQuantity == 0
+                                        ? "Out of stock"
+                                        : $"Only {inventory.StockQuantity} in stock";
+                                    allItemsOk = false;
+                                }
+                                else
+                                {
+                                    subtotal += itemResult.lineTotal;
+                                    if (itemResult.priceChanged) itemResult.message = "Price updated";
+                                }
+                            }
+                        }
+
+                        result.items.Add(itemResult);
+                    }
                 }
 
                 result.subtotal = subtotal;
@@ -267,11 +382,12 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(response, "Cart validated", SuccessCodes.DataRetrieved);
         }
+
         [Authorize(Roles = RoleConstants.Names.Pharmacy)]
         [HttpPatch("update-status")]         //api/order/update-status
         [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> UpdateOrderStatus([FromBody] UpdateOrderDTO orderDTO )
+        public async Task<IActionResult> UpdateOrderStatus([FromBody] UpdateOrderDTO orderDTO)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
@@ -283,22 +399,27 @@ namespace Med_Map.Controllers
             if (order.PharmacyUserId != userId)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
 
-            // Basic transition validation
-            var transitions = order.FulfillmentType == FulfillmentType.Delivery ? _deliveryTransitions : _pickupTransitions;
+            var transitions = order.FulfillmentType switch
+            {
+                FulfillmentType.Delivery          => _deliveryTransitions,
+                FulfillmentType.Pickup            => _pickupTransitions,
+                FulfillmentType.ServiceAtPharmacy => _serviceAtPharmacyTransitions,
+                FulfillmentType.ServiceAtHome     => _serviceAtHomeTransitions,
+                _                                 => _deliveryTransitions
+            };
 
             if (!Enum.TryParse<StatusList>(orderDTO.nextStatus, true, out var nextStatus))
                 return ErrorResponse("Invalid status value", ErrorCodes.InvalidInput);
 
             if (!transitions.TryGetValue(order.Status, out var allowed) || !allowed.Contains(nextStatus))
-                return ErrorResponse($"Cannot transition from {order.Status} to {orderDTO.nextStatus} for a {order.FulfillmentType} order",ErrorCodes.InvalidAction);
+                return ErrorResponse($"Cannot transition from {order.Status} to {orderDTO.nextStatus} for a {order.FulfillmentType} order", ErrorCodes.InvalidAction);
 
-            // Update the status
             order.Status = nextStatus;
             await orderRepository.UpdateStatusAsync(order.Id, nextStatus, nextStatus == StatusList.Delivered ? DateTime.UtcNow : null);
 
-            // Notify the customer: their order moved to a new status
-            await hub.Clients.User(order.CustomerId).OrderStatusChanged(
-                new OrderStatusChangedPayload(order.Id, nextStatus.ToString(), order.FulfillmentType.ToString()));
+            var statusPayload = new OrderStatusChangedPayload(order.Id, nextStatus.ToString(), order.FulfillmentType.ToString());
+            await hub.Clients.User(order.CustomerId).OrderStatusChanged(statusPayload);
+            await hub.Clients.User(userId).OrderStatusChanged(statusPayload);
 
             if (nextStatus == StatusList.Delivered && order.PaymentType == PaymentOptions.Online)
             {
@@ -309,13 +430,13 @@ namespace Med_Map.Controllers
                 var pharmacyShare = order.ItemsSubtotal + order.DeliveryFee;
                 await walletTransactionRepository.DepositAsync(wallet.Id, pharmacyShare, wallet.Currency, order.Id);
 
-                // Notify the pharmacy: their wallet was credited for this delivery
                 await hub.Clients.User(userId).WalletDeposited(
                     new WalletDepositedPayload(wallet.Id, pharmacyShare, wallet.Currency.ToString(), order.Id));
             }
 
             return SuccessResponse(MapOrderToResponseDTO(order), "Status updated successfully", SuccessCodes.DataUpdated);
         }
+
         [Authorize]
         [HttpGet("stats")]                      //api/order/stats
         [ProducesResponseType(typeof(SuccessResponseDTO<OrderStatsDTO>), 200)]
@@ -335,6 +456,7 @@ namespace Med_Map.Controllers
             var stats = await orderRepository.GetOrderStatsAsync(userId, role);
             return SuccessResponse(stats, "Stats retrieved successfully", SuccessCodes.DataRetrieved);
         }
+
         [Authorize]
         [HttpGet("myOrders")]                   //api/order/myOrders?page=1&pageSize=10&status=Recorded
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<OrderResponseDTO>>), 200)]
@@ -375,14 +497,15 @@ namespace Med_Map.Controllers
 
             return SuccessResponse(response, "Orders retrieved successfully", SuccessCodes.DataRetrieved);
         }
+
         [Authorize]
         [HttpGet]                               // api/order?id=
         [ProducesResponseType(typeof(SuccessResponseDTO<OrderResponseDTO>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> GetOrderById([FromQuery]string id)
+        public async Task<IActionResult> GetOrderById([FromQuery] string id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if(userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
+            if (userId == null) return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
             var user = await userManager.FindByIdAsync(userId);
             if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
@@ -398,10 +521,10 @@ namespace Med_Map.Controllers
 
             if (role == RoleConstants.Names.Pharmacy && order.PharmacyUserId != userId)
                 return ErrorResponse("Unauthorized", ErrorCodes.Unauthorized);
-            //Map to DTO and return response
-            var response = MapOrderToResponseDTO(order);
-            return SuccessResponse<OrderResponseDTO>(response, "Order retrieved successfully", SuccessCodes.DataRetrieved);
+
+            return SuccessResponse<OrderResponseDTO>(MapOrderToResponseDTO(order), "Order retrieved successfully", SuccessCodes.DataRetrieved);
         }
+
         [Authorize]
         [HttpPatch("cancel/{orderId}")]          // api/order/cancel/{orderId}
         [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
@@ -414,7 +537,6 @@ namespace Med_Map.Controllers
             if (user == null) return ErrorResponse("User not found", ErrorCodes.UserNotFound);
             if (user.IsActive == false) return ErrorResponse("Complete Registration", ErrorCodes.CompleteRegistration);
 
-            // Load order before cancelling so we know which pharmacy to notify
             var order = await orderRepository.GetOrderByIdAsync(orderId);
             if (order == null) return ErrorResponse("Order not found", ErrorCodes.DataNotFound);
 
@@ -423,14 +545,14 @@ namespace Med_Map.Controllers
             if (!success)
                 return ErrorResponse("Order cannot be cancelled at this stage.", ErrorCodes.InvalidAction);
 
-            // Notify the pharmacy: a customer cancelled their order
             await hub.Clients.User(order.PharmacyUserId).OrderCancelled(
                 new OrderCancelledPayload(order.Id, userId));
 
             return SuccessResponse("Order cancelled successfully", SuccessCodes.DataUpdated);
         }
-        // Helper method to map Order to OrderResponseDTO
-        private OrderResponseDTO MapOrderToResponseDTO(Orders order)
+
+        #region helpers
+        private static OrderResponseDTO MapOrderToResponseDTO(Orders order)
         {
             return new OrderResponseDTO
             {
@@ -442,12 +564,23 @@ namespace Med_Map.Controllers
                 paymentFee = order.PaymentFee,
                 appFee = order.AppFee,
                 totalAmount = order.TotalAmount,
-                items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => new OrderItemResponseDTO
-                {
-                    MedicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.unitPrice
-                }).ToList(),
+                items = (order.OrderItems ?? new List<OrderItem>()).Select(oi => oi.ServiceId.HasValue
+                    ? new OrderItemResponseDTO
+                    {
+                        type = "service",
+                        serviceId = oi.ServiceId,
+                        serviceName = oi.Service?.Name ?? "Unknown Service",
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.unitPrice
+                    }
+                    : new OrderItemResponseDTO
+                    {
+                        type = "medicine",
+                        medicineId = oi.MedicineId,
+                        medicineName = oi.Medicine?.TradeName ?? "Unknown Medicine",
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.unitPrice
+                    }).ToList(),
                 fulfillmentType = order.FulfillmentType.ToString(),
                 phoneNumber = order.PhoneNumber,
                 deliveryAddress = order.DeliveryAddressText
@@ -468,6 +601,20 @@ namespace Med_Map.Controllers
             { StatusList.ReadyForPickup,  new() { StatusList.Delivered } },
         };
 
+        // Recorded → Confirmed → Delivered
+        private readonly Dictionary<StatusList, List<StatusList>> _serviceAtPharmacyTransitions = new()
+        {
+            { StatusList.Recorded,   new() { StatusList.Confirmed, StatusList.Canceled } },
+            { StatusList.Confirmed,  new() { StatusList.Delivered, StatusList.Canceled } },
+        };
+
+        // Recorded → Confirmed → OutForDelivery (en route to customer) → Delivered
+        private readonly Dictionary<StatusList, List<StatusList>> _serviceAtHomeTransitions = new()
+        {
+            { StatusList.Recorded,        new() { StatusList.Confirmed, StatusList.Canceled } },
+            { StatusList.Confirmed,       new() { StatusList.OutForDelivery, StatusList.Canceled } },
+            { StatusList.OutForDelivery,  new() { StatusList.Delivered } },
+        };
+        #endregion
     }
 }
-

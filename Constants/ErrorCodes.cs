@@ -3,7 +3,7 @@
     public static class ErrorCodes
     {
         // General
-        public const string ValidationError = "validation_error";
+        public const string ValidationError = "order_validation_error";
         public const string InternalServerError = "internal_server_error";
 
         // Authentication & Account
