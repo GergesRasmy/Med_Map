@@ -52,6 +52,10 @@ public partial class Program
         builder.Services.AddScoped<IAccountService, AccountService>();
         builder.Services.AddScoped<IKashierService, KashierService>();
         builder.Services.AddHostedService<PendingOrderExpiryService>();
+        builder.Services.AddHttpClient<IAiService, AiService>(client =>
+        {
+            client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
+        });
         #endregion
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {

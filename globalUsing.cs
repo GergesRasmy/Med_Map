@@ -31,5 +31,6 @@ global using Med_Map.Repositories.WalletRepos;
 global using Med_Map.Seeders;
 global using Med_Map.Hubs;
 global using Med_Map.DTO.NotificationDTOs;
+global using Med_Map.DTO.AiDTOs;
 global using Microsoft.AspNetCore.SignalR;
 
