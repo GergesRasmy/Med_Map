@@ -132,12 +132,12 @@ namespace Med_Map.Controllers
         [HttpGet("allMedicine")]        //api/medicine/order/allMedicine
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<MedicineResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> getAllMedicine([FromQuery] int page = 1)
+        public async Task<IActionResult> getAllMedicine([FromQuery] int page = 1, [FromQuery] bool? isRestricted = null)
         {
             //get the medicine from the database
             if (page < 1) return ErrorResponse("Page must be greater than 0", ErrorCodes.ValidationError);
 
-            var (medicines, totalCount) = await medicineRepository.GetAllMedicineAsync(page, Constant.PageSize);
+            var (medicines, totalCount) = await medicineRepository.GetAllMedicineAsync(page, Constant.PageSize, isRestricted);
 
             if (medicines == null || !medicines.Any())
                 return SuccessResponse(new PagedDTO<MedicineResponseDTO> { currentPage = page, pageSize = Constant.PageSize, totalPages = 0, totalCount = 0, items = new List<MedicineResponseDTO>() }, "No medicines found", SuccessCodes.DataRetrieved);
@@ -170,12 +170,12 @@ namespace Med_Map.Controllers
         [HttpGet("search")]             // api/medicine/search?query=
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<MedicineResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> SearchMedicine([FromQuery] string query, [FromQuery] int page = 1)
+        public async Task<IActionResult> SearchMedicine([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] bool? isRestricted = null)
         {
             //Search for medicines by trade name in the database
             if (page < 1) return ErrorResponse("Page must be greater than 0", ErrorCodes.ValidationError);
 
-            var (medicines, totalCount) = await medicineRepository.GetByTradeNameAsync(query, page, Constant.PageSize);
+            var (medicines, totalCount) = await medicineRepository.GetByTradeNameAsync(query, page, Constant.PageSize, isRestricted);
             if (medicines == null || !medicines.Any())
                 return SuccessResponse(new PagedDTO<MedicineResponseDTO> { currentPage = page, pageSize = Constant.PageSize, totalPages = 0, totalCount = 0, items = new List<MedicineResponseDTO>() }, "No medicines found matching the search criteria", SuccessCodes.DataRetrieved);
 

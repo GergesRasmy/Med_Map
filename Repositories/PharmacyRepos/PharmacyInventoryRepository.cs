@@ -83,15 +83,34 @@ namespace Med_Map.Repositories.PharmacyRepos
 
             return true;
         }
-        public async Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyUserId, int page, int pageSize = 10)
+        public async Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyUserId, int page, int pageSize = 10, string? query = null, StockStatusFilter? stockStatus = null, int? nearOutOfStockThreshold = null)
         {
-            var query = _context.PharmacyInventory
+            var inventoryQuery = _context.PharmacyInventory
                 .AsNoTracking()
                 .Include(pi => pi.Medicine)
                 .Where(pi => pi.PharmacyUserId == pharmacyUserId);
 
-            var totalCount = await query.CountAsync();
-            var items = await query
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                inventoryQuery = inventoryQuery.Where(pi =>
+                    EF.Functions.Like(pi.Medicine.TradeName, $"%{query}%") ||
+                    EF.Functions.Like(pi.Medicine.GenericName, $"%{query}%"));
+            }
+
+            if (stockStatus.HasValue)
+            {
+                var threshold = nearOutOfStockThreshold ?? Constant.NearOutOfStockThreshold;
+                inventoryQuery = stockStatus.Value switch
+                {
+                    StockStatusFilter.OutOfStock => inventoryQuery.Where(pi => pi.StockQuantity == 0),
+                    StockStatusFilter.NearOutOfStock => inventoryQuery.Where(pi => pi.StockQuantity > 0 && pi.StockQuantity <= threshold),
+                    StockStatusFilter.InStock => inventoryQuery.Where(pi => pi.StockQuantity > 0),
+                    _ => inventoryQuery
+                };
+            }
+
+            var totalCount = await inventoryQuery.CountAsync();
+            var items = await inventoryQuery
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

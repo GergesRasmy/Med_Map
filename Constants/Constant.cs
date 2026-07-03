@@ -7,6 +7,7 @@
         public const int OtpMaxAttempts = 5; // failed verification attempts before an OTP is locked out
         public const int OtpResendCooldownSeconds = 60; // minimum wait between OTP generations for the same user/purpose
         public const int PageSize = 10;
+        public const int NearOutOfStockThreshold = 5; // default low-stock threshold used when the client filters by stockStatus=nearOutOfStock without specifying one
 
         // platform/order fees (in the platform's currency) — surfaced by the cart-validation endpoint
         public const decimal AppFee = 5.00m;             // flat platform service fee per order

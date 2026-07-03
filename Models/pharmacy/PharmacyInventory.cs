@@ -4,6 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Med_Map.Models.pharmacy
 {
+    public enum StockStatusFilter
+    {
+        InStock,
+        NearOutOfStock,
+        OutOfStock
+    }
     public class PharmacyInventory
     {
         [Key]

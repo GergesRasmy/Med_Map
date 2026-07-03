@@ -60,7 +60,8 @@ public partial class Program
         builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>
         {
             options.User.RequireUniqueEmail = true;
-        }).AddEntityFrameworkStores<Mm_Context>();
+        }).AddEntityFrameworkStores<Mm_Context>()
+          .AddDefaultTokenProviders();
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

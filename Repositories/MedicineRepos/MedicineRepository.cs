@@ -21,9 +21,12 @@
             return await _context.MedicineMaster
                 .AnyAsync(m => m.TradeName == tradeName && (excludeId == null || m.Id.ToString() != excludeId));
         }
-        public async Task<(List<MedicineMaster> items, int totalCount)> GetAllMedicineAsync(int page, int pageSize = 10)
+        public async Task<(List<MedicineMaster> items, int totalCount)> GetAllMedicineAsync(int page, int pageSize = 10, bool? isRestricted = null)
         {
             var query = _context.MedicineMaster.AsNoTracking();
+
+            if (isRestricted.HasValue)
+                query = query.Where(m => m.IsRestricted == isRestricted.Value);
 
             var totalCount = await query.CountAsync();
             var items = await query
@@ -37,7 +40,7 @@
         {
             return await _context.MedicineMaster.FirstOrDefaultAsync(c => c.Id == Guid.Parse(id));
         }
-        public async Task<(List<MedicineMaster>? items, int totalCount)> GetByTradeNameAsync(string tradeName, int page, int pageSize = 10)
+        public async Task<(List<MedicineMaster>? items, int totalCount)> GetByTradeNameAsync(string tradeName, int page, int pageSize = 10, bool? isRestricted = null)
         {
             if (string.IsNullOrWhiteSpace(tradeName))
                 return (new List<MedicineMaster>(), 0);
@@ -45,6 +48,9 @@
             var query = _context.MedicineMaster
                 .Where(m => m.TradeName.Contains(tradeName))
                 .AsNoTracking();
+
+            if (isRestricted.HasValue)
+                query = query.Where(m => m.IsRestricted == isRestricted.Value);
 
             var totalCount = await query.CountAsync();
             var items = await query

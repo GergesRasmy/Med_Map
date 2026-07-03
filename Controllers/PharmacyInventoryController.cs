@@ -130,7 +130,7 @@ namespace Med_Map.Controllers
         [HttpGet("viewInventory")]              // api/pharmacyInventory/viewInventory?page=1&pageSize=10
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<InventoryItemResponseDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> ViewInventory([FromQuery] int page = 1, int pageSize = 10)
+        public async Task<IActionResult> ViewInventory([FromQuery] int page = 1, int pageSize = 10, [FromQuery] string? query = null, [FromQuery] StockStatusFilter? stockStatus = null, [FromQuery] int? nearOutOfStockThreshold = null)
         {
             if (page < 1) page = 1;
             if (pageSize > 50) pageSize = 50;
@@ -143,7 +143,7 @@ namespace Med_Map.Controllers
                 return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
 
             var (items, totalCount) = await pharmacyInventoryRepository
-                .GetPharmacyInventoryAsync(userId, page, pageSize);
+                .GetPharmacyInventoryAsync(userId, page, pageSize, query, stockStatus, nearOutOfStockThreshold);
 
             var response = new PagedDTO<InventoryItemResponseDTO>
             {

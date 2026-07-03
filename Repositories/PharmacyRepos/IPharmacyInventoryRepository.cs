@@ -7,7 +7,7 @@
         Task<PharmacyInventory?> GetPharmacyMedicineWithDetailsAsync(string pharmacyId, Guid medicineId);
         Task<bool> RemoveMedicineAsync(string pharmacyId, Guid medicineId);
         Task SaveChangesAsync();
-        Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyUserId, int page, int pageSize = 10);
+        Task<(List<PharmacyInventory> items, int totalCount)> GetPharmacyInventoryAsync(string pharmacyUserId, int page, int pageSize = 10, string? query = null, StockStatusFilter? stockStatus = null, int? nearOutOfStockThreshold = null);
         Task<PharmacyInventory?> GetPharmacyMedicineBatchAsync(string pharmacyUserId, string medicineId, DateOnly expiryDate);
         Task<List<PharmacyInventory>> GetMedicineBatchesAsync(string pharmacyUserId, string medicineId);
         Task<PharmacyInventory?> GetBatchByIdAsync(string pharmacyUserId, Guid batchId);
