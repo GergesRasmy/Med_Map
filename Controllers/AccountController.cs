@@ -15,20 +15,18 @@ namespace Med_Map.Controllers
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration config;
-        private readonly IOtpRepository otpRepository;
         private readonly IOtpService otpService;
         private readonly ISessionRepository sessionRepository;
         private readonly IEmailService emailService;
         private readonly ILogger<AccountController> logger;
 
         public AccountController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration config
-                                            , IOtpRepository otpRepository, IOtpService otpService, ISessionRepository sessionRepository
+                                            , IOtpService otpService, ISessionRepository sessionRepository
                                             , IEmailService emailService, ILogger<AccountController> logger)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
             this.config = config;
-            this.otpRepository = otpRepository;
             this.otpService = otpService;
             this.sessionRepository = sessionRepository;
             this.emailService = emailService;
@@ -71,8 +69,8 @@ namespace Med_Map.Controllers
             }
             try
             {
-                var otpRecord = await otpService.GenerateAndSendOtpAsync(user);
-                return SuccessResponse(otpRecord,"User created, please verify using the OTP.", SuccessCodes.RegistrationPending);
+                var otpRecord = await otpService.GenerateAndSendOtpAsync(user, OtpPurpose.Registration);
+                return SuccessResponse(otpRecord.Data,"User created, please verify using the OTP.", SuccessCodes.RegistrationPending);
             }
             catch (Exception ex)
             {
@@ -86,17 +84,15 @@ namespace Med_Map.Controllers
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> verifyOtp([FromBody] VerifyOtpDTO model)
         {
-            //Check if the OTP exists, matches, hasn't been used, and isn't expired
-            var otpRecord = await otpRepository.FindValidOtpAsync(model.sessionId, model.code);
-            if (otpRecord == null) 
+            //Check the OTP exists, matches, hasn't been used/expired, and isn't locked out from too many attempts
+            var verification = await otpService.VerifyOtpAsync(model.sessionId, model.code, OtpPurpose.Registration);
+            if (verification.Status == OtpVerificationStatus.TooManyAttempts)
+                return ErrorResponse("Too many incorrect attempts. Please request a new code.", ErrorCodes.OtpMaxAttemptsExceeded);
+            if (verification.Status != OtpVerificationStatus.Success || verification.Otp == null)
                 return ErrorResponse("Invalid or expired OTP code.", ErrorCodes.InvalidOtp);
 
-            //Mark the OTP as used immediately to prevent replay attacks
-            otpRecord.IsUsed = true;
-            await otpRepository.UpdateAsync(otpRecord);
-
             //Find the user associated with this OTP
-            var user = await userManager.FindByIdAsync(otpRecord.UserId);
+            var user = await userManager.FindByIdAsync(verification.Otp.UserId);
             if (user == null)
                 return ErrorResponse("User not found.", ErrorCodes.UserNotFound);
 
@@ -130,14 +126,67 @@ namespace Med_Map.Controllers
             //Generate and send new OTP
             try
             {
-                var otpData = await otpService.GenerateAndSendOtpAsync(user);
-                return SuccessResponse(otpData, "Verification code sent successfully.", SuccessCodes.RegistrationPending);
+                var otpData = await otpService.GenerateAndSendOtpAsync(user, OtpPurpose.Registration);
+                if (!otpData.Success)
+                    return ErrorResponse($"Please wait {otpData.RetryAfterSeconds}s before requesting another code.", ErrorCodes.OtpCooldown);
+
+                return SuccessResponse(otpData.Data, "Verification code sent successfully.", SuccessCodes.RegistrationPending);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "OTP send failed for user {UserId}", user.Id);
                 return ErrorResponse("Verification process failed.", ErrorCodes.OtpSendFailed);
             }
+        }
+
+        [HttpPost("forgotPassword")]           //api/Account/forgotPassword
+        [ProducesResponseType(typeof(SuccessResponseDTO<OtpResponseDataDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> forgotPassword([FromBody] ForgotPasswordDTO model)
+        {
+            var user = await userManager.FindByEmailAsync(model.email);
+            if (user == null)
+                return ErrorResponse("User Not Found", ErrorCodes.UserNotFound);
+
+            if (!user.EmailConfirmed)
+                return ErrorResponse("Email not verified, please verify your account first.", ErrorCodes.EmailUnconfirmed);
+
+            try
+            {
+                var otpData = await otpService.GenerateAndSendOtpAsync(user, OtpPurpose.PasswordReset);
+                if (!otpData.Success)
+                    return ErrorResponse($"Please wait {otpData.RetryAfterSeconds}s before requesting another code.", ErrorCodes.OtpCooldown);
+
+                return SuccessResponse(otpData.Data, "Password reset code sent successfully.", SuccessCodes.PasswordResetPending);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Password reset OTP send failed for user {UserId}", user.Id);
+                return ErrorResponse("Password reset process failed.", ErrorCodes.OtpSendFailed);
+            }
+        }
+
+        [HttpPost("resetPassword")]           //api/Account/resetPassword
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> resetPassword([FromBody] ResetPasswordDTO model)
+        {
+            var verification = await otpService.VerifyOtpAsync(model.sessionId, model.code, OtpPurpose.PasswordReset);
+            if (verification.Status == OtpVerificationStatus.TooManyAttempts)
+                return ErrorResponse("Too many incorrect attempts. Please request a new code.", ErrorCodes.OtpMaxAttemptsExceeded);
+            if (verification.Status != OtpVerificationStatus.Success || verification.Otp == null)
+                return ErrorResponse("Invalid or expired OTP code.", ErrorCodes.InvalidOtp);
+
+            var user = await userManager.FindByIdAsync(verification.Otp.UserId);
+            if (user == null)
+                return ErrorResponse("User not found.", ErrorCodes.UserNotFound);
+
+            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, resetToken, model.newPassword);
+            if (!result.Succeeded)
+                return ErrorResponse("Failed to reset password.", ErrorCodes.RegistrationFailed);
+
+            return SuccessResponse<object>(null, "Password reset successfully. Please log in with your new password.", SuccessCodes.PasswordResetSuccess);
         }
 
         [HttpPost("login")]           //api/Account/login

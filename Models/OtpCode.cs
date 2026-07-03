@@ -2,6 +2,12 @@
 
 namespace Med_Map.Models
 {
+    public enum OtpPurpose
+    {
+        Registration,
+        PasswordReset
+    }
+
     public class OtpCode
     {
         [Key]
@@ -21,8 +27,11 @@ namespace Med_Map.Models
         [Required]
         public Guid SessionId { get; set; } = Guid.NewGuid();
 
+        public OtpPurpose Purpose { get; set; } = OtpPurpose.Registration;
+        public int AttemptCount { get; set; } = 0;
+
         public DateTime ExpiresAt { get; set; }
         public bool IsUsed { get; set; } = false;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

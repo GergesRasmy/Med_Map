@@ -1,4 +1,4 @@
-﻿
+
 namespace Med_Map.Repositories.Account
 {
     public class OtpRepository : IOtpRepository
@@ -16,17 +16,24 @@ namespace Med_Map.Repositories.Account
             await _context.SaveChangesAsync();
         }
 
-        public async Task<OtpCode?> FindValidOtpAsync(Guid sessionId, string code)
+        public async Task<OtpCode?> GetActiveSessionAsync(Guid sessionId, OtpPurpose purpose)
         {
-            if (string.IsNullOrWhiteSpace(code) || sessionId == Guid.Empty)
+            if (sessionId == Guid.Empty)
             {
                 return null;
             }
-            return await _context.OtpCodes.AsNoTracking().FirstOrDefaultAsync(o => o.SessionId == sessionId
-                               && o.Code == code
+            return await _context.OtpCodes.FirstOrDefaultAsync(o => o.SessionId == sessionId
+                               && o.Purpose == purpose
                                && !o.IsUsed
                                && o.ExpiresAt > DateTime.UtcNow);
+        }
 
+        public async Task<OtpCode?> GetLatestAsync(string userId, OtpPurpose purpose)
+        {
+            return await _context.OtpCodes.AsNoTracking()
+                .Where(o => o.UserId == userId && o.Purpose == purpose)
+                .OrderByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
         }
 
         public async Task UpdateAsync(OtpCode otp)

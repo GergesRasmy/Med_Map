@@ -27,7 +27,7 @@ namespace Med_Map.Controllers
         [HttpPost("ocr/medicine")]           //api/ai/ocr/medicine
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> OcrMedicine([FromForm] IFormFile file)
+        public async Task<IActionResult> OcrMedicine(IFormFile file)
         {
             if (file == null || file.Length == 0) return ErrorResponse("File is required", ErrorCodes.InvalidInput);
 
@@ -38,7 +38,7 @@ namespace Med_Map.Controllers
         [HttpPost("ocr/prescription")]           //api/ai/ocr/prescription
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> OcrPrescription([FromForm] IFormFile file)
+        public async Task<IActionResult> OcrPrescription(IFormFile file)
         {
             if (file == null || file.Length == 0) return ErrorResponse("File is required", ErrorCodes.InvalidInput);
 

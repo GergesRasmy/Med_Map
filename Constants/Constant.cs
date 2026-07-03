@@ -4,6 +4,8 @@
     {
         public const double tokenExpirationTime = 1000000;// in Hours, Approx 114 years, effectively making tokens non-expiring for testing purposes. Adjust as needed for production.
         public const double OtpExpirationTime = 5; // in Minutes
+        public const int OtpMaxAttempts = 5; // failed verification attempts before an OTP is locked out
+        public const int OtpResendCooldownSeconds = 60; // minimum wait between OTP generations for the same user/purpose
         public const int PageSize = 10;
 
         // platform/order fees (in the platform's currency) — surfaced by the cart-validation endpoint

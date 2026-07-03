@@ -23,6 +23,8 @@
         // OTP Logic
         public const string InvalidOtp = "invalid_otp";
         public const string OtpSendFailed = "otp_send_failed";
+        public const string OtpCooldown = "otp_cooldown";
+        public const string OtpMaxAttemptsExceeded = "otp_max_attempts_exceeded";
 
         // Registration Flow
         public const string ProfileCreationFailed = "profile_creation_failed";
