@@ -153,19 +153,25 @@ namespace Med_Map.Seeders
         {
             var dataDir = Path.Combine(AppContext.BaseDirectory, "Seeders", "Data");
             var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-            var destDir = Path.Combine(webRoot, "uploads", "Pharmacy_Documents");
-            Directory.CreateDirectory(destDir);
 
-            string Copy(string fileName)
+            string Copy(string fileName, string folder)
             {
+                var destDir = Path.Combine(webRoot, "uploads", folder);
+                Directory.CreateDirectory(destDir);
+
                 var src  = Path.Combine(dataDir, fileName);
                 var dest = Path.Combine(destDir, fileName);
                 if (File.Exists(src) && !File.Exists(dest))
                     File.Copy(src, dest);
-                return $"/uploads/Pharmacy_Documents/{fileName}";
+
+                var apiRoute = Constant.UploadFolders.ToApiRoute[folder];
+                return $"/api/files/{apiRoute}/{fileName}";
             }
 
-            return (Copy(idFile), Copy(licenseFile));
+            return (
+                Copy(idFile, Constant.UploadFolders.NationalIds),
+                Copy(licenseFile, Constant.UploadFolders.PharmacyLicenses)
+            );
         }
     }
 }

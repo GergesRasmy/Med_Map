@@ -191,7 +191,7 @@ namespace Med_Map.Controllers
 
 
         [HttpPost("activateProfile")]         //api/pharmacy/activateProfile?userId={userId}
-        //[Authorize(Roles = RoleConstants.Names.Admin)]
+        [Authorize(Roles = RoleConstants.Names.Admin)]
         [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> ActivateProfile([FromQuery] string userId)
@@ -309,6 +309,7 @@ namespace Med_Map.Controllers
 
 
         [HttpGet("pharmacies")]                     //api/pharmacy/pharmacies
+        [Authorize(Roles = RoleConstants.Names.Admin)]
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<PharmacyDetailsDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
         public async Task<IActionResult> GetAllPharmacies([FromQuery] int page = 1, int pageSize = 10)
