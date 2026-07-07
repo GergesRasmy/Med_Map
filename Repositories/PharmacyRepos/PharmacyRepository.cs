@@ -55,14 +55,33 @@ namespace Med_Map.Repositories.PharmacyRepos
                 throw;
             }
         }
-        public async Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize)
+        public async Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize, string? name = null, PharmacyStatusFilter? status = null)
         {
-            var query = _context.Pharmacy.AsNoTracking()
+            IQueryable<Pharmacy> query = _context.Pharmacy.AsNoTracking()
                 .Include(p => p.User)
                 .Include(p => p.ActiveProfile).ThenInclude(ap => ap!.Documents)
                 .Include(p => p.ActiveProfile).ThenInclude(ap => ap!.PhoneNumbers)
                 .Include(p => p.PendingProfile).ThenInclude(pp => pp!.Documents)
                 .Include(p => p.PendingProfile).ThenInclude(pp => pp!.PhoneNumbers);
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                string normalizedSearch = name.ToUpper();
+                query = query.Where(p =>
+                    (p.ActiveProfile != null && p.ActiveProfile.PharmacyName != null &&
+                     p.ActiveProfile.PharmacyName.ToUpper().Contains(normalizedSearch)) ||
+                    (p.PendingProfile != null && p.PendingProfile.PharmacyName != null &&
+                     p.PendingProfile.PharmacyName.ToUpper().Contains(normalizedSearch)) ||
+                    (p.User != null && p.User.NormalizedUserName != null &&
+                     p.User.NormalizedUserName.Contains(normalizedSearch)));
+            }
+
+            query = status switch
+            {
+                PharmacyStatusFilter.Active => query.Where(p => p.ActiveProfile != null && p.PendingProfile == null),
+                PharmacyStatusFilter.NotActive => query.Where(p => p.PendingProfile != null),
+                _ => query
+            };
 
             var totalCount = await query.CountAsync();
             var items = await query
@@ -194,6 +213,7 @@ namespace Med_Map.Repositories.PharmacyRepos
         {
             return await _context.Pharmacy
                 .AsNoTracking()
+                 .Include(p => p.User)
                  .Include(p => p.ActiveProfile)
                     .ThenInclude(ap => ap!.PhoneNumbers)
                 .Include(p => p.ActiveProfile)         

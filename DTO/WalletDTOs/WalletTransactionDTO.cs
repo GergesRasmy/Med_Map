@@ -3,6 +3,9 @@ namespace Med_Map.DTO.WalletDTOs
     public class WalletTransactionDTO
     {
         public Guid Id { get; set; }
+        public Guid WalletId { get; set; }
+        public string PharmacyUserId { get; set; } = string.Empty;
+        public string? PharmacyName { get; set; }
         public string Type { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public decimal Amount { get; set; }

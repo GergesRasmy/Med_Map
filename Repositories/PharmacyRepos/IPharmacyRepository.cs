@@ -14,7 +14,7 @@
                 int page,
                 int pageSize = 10);
         Task SaveChangesAsync();
-        Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize);
+        Task<(List<Pharmacy> items, int totalCount)> GetAllPharmaciesPaginatedAsync(int page, int pageSize, string? name = null, PharmacyStatusFilter? status = null);
         Task InsertAsync(Pharmacy pharmacy);
         Task<Pharmacy?> GetByIdWithPendingAsync(string id);
     }

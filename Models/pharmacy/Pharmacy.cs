@@ -4,6 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Med_Map.Models.pharmacy
 {
+    public enum PharmacyStatusFilter
+    {
+        Active,
+        NotActive,
+        All
+    }
     public class Pharmacy
     {
         // --- Identity Link ---

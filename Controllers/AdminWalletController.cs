@@ -77,6 +77,7 @@ namespace Med_Map.Controllers
             await hub.Clients.User(wallet.PharmacyUserId).WithdrawalCompleted(
                 new WithdrawalCompletedPayload(transaction.Id, wallet.Id));
 
+            transaction.Wallet = wallet;
             return SuccessResponse(MapToDTO(transaction), "Withdrawal marked as complete.", SuccessCodes.DataUpdated);
         }
 
@@ -117,12 +118,16 @@ namespace Med_Map.Controllers
             await hub.Clients.User(wallet.PharmacyUserId).WithdrawalCancelled(
                 new WithdrawalCancelledPayload(transaction.Id, wallet.Id, transaction.Amount, wallet.Currency.ToString()));
 
+            transaction.Wallet = wallet;
             return SuccessResponse(MapToDTO(transaction), "Withdrawal cancelled and balance refunded.", SuccessCodes.DataUpdated);
         }
 
         private static WalletTransactionDTO MapToDTO(WalletTransaction t) => new()
         {
             Id = t.Id,
+            WalletId = t.WalletId,
+            PharmacyUserId = t.Wallet?.PharmacyUserId ?? string.Empty,
+            PharmacyName = t.Wallet?.Pharmacy?.ActiveProfile?.PharmacyName,
             Type = t.Type.ToString(),
             Status = t.Status.ToString(),
             Amount = t.Amount,

@@ -308,16 +308,30 @@ namespace Med_Map.Controllers
         }
 
 
+        [HttpGet("pharmacyDetails/{id}")]           //api/pharmacy/pharmacyDetails/{id}
+        [Authorize(Roles = RoleConstants.Names.Admin)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<PharmacyDetailsDTO>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> GetPharmacyDetails(string id)
+        {
+            var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(id);
+            if (pharmacy == null)
+                return ErrorResponse("Pharmacy not found", ErrorCodes.UserNotFound);
+
+            return SuccessResponse(MapToDetailedDto(pharmacy), "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
+        }
+
+
         [HttpGet("pharmacies")]                     //api/pharmacy/pharmacies
         [Authorize(Roles = RoleConstants.Names.Admin)]
         [ProducesResponseType(typeof(SuccessResponseDTO<PagedDTO<PharmacyDetailsDTO>>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
-        public async Task<IActionResult> GetAllPharmacies([FromQuery] int page = 1, int pageSize = 10)
+        public async Task<IActionResult> GetAllPharmacies([FromQuery] int page = 1, int pageSize = 10, [FromQuery] string? name = null, [FromQuery] PharmacyStatusFilter? status = null)
         {
             if (page < 1) page = 1;
             if (pageSize > 50) pageSize = 50;
 
-            var (pharmacies, totalCount) = await pharmacyRepository.GetAllPharmaciesPaginatedAsync(page, pageSize);
+            var (pharmacies, totalCount) = await pharmacyRepository.GetAllPharmaciesPaginatedAsync(page, pageSize, name, status);
 
             if (totalCount == 0)
                 return SuccessResponse(new PagedDTO<PharmacyDetailsDTO> { items = new List<PharmacyDetailsDTO>(), totalCount = 0, currentPage = page, pageSize = pageSize, totalPages = 0 }, "No pharmacies found", SuccessCodes.DataRetrieved);

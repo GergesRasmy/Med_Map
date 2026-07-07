@@ -61,6 +61,9 @@ namespace Med_Map.Repositories.WalletRepos
         {
             var query = _context.WalletTransaction
                 .AsNoTracking()
+                .Include(t => t.Wallet)
+                    .ThenInclude(w => w.Pharmacy)
+                        .ThenInclude(p => p.ActiveProfile)
                 .Where(t => t.Type == TransactionType.Withdrawal && t.Status == TransactionStatus.Pending);
 
             var totalCount = await query.CountAsync();
