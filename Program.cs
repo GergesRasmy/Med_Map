@@ -159,7 +159,7 @@ public partial class Program
                     await roleManager.CreateAsync(new IdentityRole(roleName));
             }
 
-            if (app.Environment.IsDevelopment())
+            if (app.Environment.IsDevelopment() && Constant.IncludeSeeders)
             {
                 var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
                 var dbContext   = scope.ServiceProvider.GetRequiredService<Mm_Context>();
