@@ -50,7 +50,7 @@ namespace Med_Map.Services
             string subject = purpose == OtpPurpose.PasswordReset ? "Med-Map Password Reset Code" : "Med-Map Verification Code";
             string body = $"<h2>Welcome to Med-Map!{user.UserName}</h2><p>Your code is: <b>{otpCode}</b></p>";
             Console.WriteLine($"{subject} \n {body}");
-            //await _emailService.SendEmailAsync(user.Email, subject, body);
+            await _emailService.SendEmailAsync(user.Email, subject, body);
 
             return new OtpGenerationResult { Success = true, Data = otpData };
         }

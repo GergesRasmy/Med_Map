@@ -1,51 +1,37 @@
-﻿using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
-
-public class EmailService : IEmailService
+namespace Med_Map.Services
 {
-    private readonly IConfiguration _config;
-
-    public EmailService(IConfiguration config)
+    public class EmailService : IEmailService
     {
-        _config = config;
-    }
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _config;
+        private readonly ILogger<EmailService> _logger;
 
-    public async Task SendEmailAsync(string email, string subject, string message)
-    {
-        var emailMessage = new MimeMessage();
-
-        emailMessage.From.Add(new MailboxAddress("Med-Map", _config["Email:From"]));
-        emailMessage.To.Add(MailboxAddress.Parse(email));
-        emailMessage.Subject = subject;
-
-        var bodyBuilder = new BodyBuilder { HtmlBody = message };
-        emailMessage.Body = bodyBuilder.ToMessageBody();
-
-        using var client = new SmtpClient();
-        client.Timeout = 10000;
-
-        try
+        public EmailService(HttpClient httpClient, IConfiguration config, ILogger<EmailService> logger)
         {
-            await client.ConnectAsync(
-                _config["Email:Host"],
-                int.Parse(_config["Email:Port"]),
-                SecureSocketOptions.Auto);
-
-            await client.AuthenticateAsync(
-                _config["Email:Username"],
-                _config["Email:Password"]);
-
-            await client.SendAsync(emailMessage);
+            _httpClient = httpClient;
+            _config = config;
+            _logger = logger;
         }
-        catch (Exception ex)
+
+        public async Task SendEmailAsync(string email, string subject, string message)
         {
-            Console.WriteLine($"Email error: {ex.Message}");
-            throw;
-        }
-        finally
-        {
-            await client.DisconnectAsync(true);
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _config["Mailtrap:ApiToken"]);
+
+            var response = await _httpClient.PostAsJsonAsync("https://send.api.mailtrap.io/api/send", new
+            {
+                from = new { email = _config["Mailtrap:FromEmail"], name = _config["Mailtrap:FromName"] },
+                to = new[] { new { email } },
+                subject,
+                html = message
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Mailtrap send failed {Status}: {Body}", response.StatusCode, body);
+                throw new Exception("Failed to send email via Mailtrap");
+            }
         }
     }
 }

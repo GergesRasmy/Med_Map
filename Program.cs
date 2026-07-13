@@ -49,7 +49,7 @@ public partial class Program
         builder.Services.AddScoped<IWalletTransactionRepository, WalletTransactionRepository>();
         #endregion
         #region service registration
-        builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddHttpClient<IEmailService, EmailService>();
         builder.Services.AddScoped<IFileService, FileService>();
         builder.Services.AddScoped<IOtpService, OtpService>();
         builder.Services.AddScoped<IAccountService, AccountService>();
