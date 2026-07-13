@@ -2,7 +2,7 @@
 {
     public class Constant
     {
-        public const double tokenExpirationTime = 1000000;// in Hours, Approx 114 years, effectively making tokens non-expiring for testing purposes. Adjust as needed for production.
+        public const double tokenExpirationTime = 360; // in Hours (15 days)
         public const double OtpExpirationTime = 5; // in Minutes
         public const int OtpMaxAttempts = 5; // failed verification attempts before an OTP is locked out
         public const int OtpResendCooldownSeconds = 60; // minimum wait between OTP generations for the same user/purpose
@@ -16,6 +16,12 @@
 
         // pending online order expiry — orders unpaid longer than this are auto-cancelled and stock is restored
         public const int PendingOrderExpiryMinutes = 10;
+
+        // rate limiting on Account endpoints (login/register/OTP/password-reset), per client IP —
+        // deliberately generous for now (light demo traffic); tighten these once past the demo.
+        public const int AuthRateLimitPermits = 20;      // requests allowed per window
+        public const int AuthRateLimitWindowSeconds = 60; // window length, in seconds
+        public const int AuthRateLimitQueueLimit = 0;     // requests over the limit are rejected immediately (no queueing)
 
         // file upload settings
         public static readonly Dictionary<string, string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)

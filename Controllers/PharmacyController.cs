@@ -237,6 +237,29 @@ namespace Med_Map.Controllers
 
 
 
+        [HttpPost("rejectProfile")]           //api/pharmacy/rejectProfile?userId={userId}
+        [Authorize(Roles = RoleConstants.Names.Admin)]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object?>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> RejectProfile([FromQuery] string userId, [FromBody] RejectProfileDTO model)
+        {
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null)
+                return ErrorResponse("User not found", ErrorCodes.UserNotFound);
+
+            var pharmacy = await pharmacyRepository.GetByIdWithPendingAsync(userId);
+            if (pharmacy?.PendingProfile == null)
+                return ErrorResponse("No pending profile found to reject.", ErrorCodes.DataNotFound);
+
+            var success = await pharmacyRepository.RejectProfileAsync(userId, model.reason);
+            if (!success)
+                return ErrorResponse("Rejection failed.", ErrorCodes.InternalServerError);
+
+            return SuccessResponse("Pharmacy profile rejected successfully.", SuccessCodes.DataUpdated);
+        }
+
+
+
         [HttpGet("pharmacyPublicGet")]              //api/pharmacy/pharmacypublicGet?id={id}
         [ProducesResponseType(typeof(SuccessResponseDTO<PublicPharmacyDetailsDTO>), 200)]
         [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
@@ -386,7 +409,8 @@ namespace Med_Map.Controllers
                 displayName = phar.User?.displayName ?? "",
 
                 activeProfile = MapProfileToDto(phar.ActiveProfile),
-                pendingProfile = MapProfileToDto(phar.PendingProfile)
+                pendingProfile = MapProfileToDto(phar.PendingProfile),
+                rejectionReason = phar.RejectionReason
             };
         }
 

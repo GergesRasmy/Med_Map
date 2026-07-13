@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -9,6 +11,7 @@ namespace Med_Map.Controllers
 {
     [Route("api/account")]
     [ApiController]
+    [EnableRateLimiting("auth")]
     public class AccountController : ResponceBaseController
     {
         #region ctor
@@ -205,6 +208,27 @@ namespace Med_Map.Controllers
             //Create session and generate token
             var AuthData = await CreateUserSessionAndTokenAsync(user);
             return SuccessResponse(AuthData,"Login Successful",SuccessCodes.LoginSuccess);
+        }
+
+        [HttpPost("logout")]           //api/Account/logout
+        [Authorize]
+        [ProducesResponseType(typeof(SuccessResponseDTO<object>), 200)]
+        [ProducesResponseType(typeof(ErrorResponseDTO<object>), 400)]
+        public async Task<IActionResult> logout()
+        {
+            //The caller's own session id, embedded as the 'sid' claim when the token was issued
+            var sidClaim = User.FindFirstValue("sid");
+            if (!Guid.TryParse(sidClaim, out var sessionId))
+                return ErrorResponse("Token has no session id.", ErrorCodes.Unauthorized);
+
+            var session = await sessionRepository.FindByIdAsync(sessionId);
+            if (session == null)
+                return ErrorResponse("Session not found.", ErrorCodes.UserNotFound);
+
+            session.IsActive = false;
+            await sessionRepository.UpdateAsync(session);
+
+            return SuccessResponse<object>(null, "Logged out successfully.", SuccessCodes.LogoutSuccess);
         }
 
         // Helper method to generate JWT token

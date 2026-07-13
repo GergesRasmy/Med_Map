@@ -2,11 +2,14 @@ using Med_Map.Filters;
 using Med_Map.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 
 public partial class Program
 {
@@ -89,10 +92,41 @@ public partial class Program
                         context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                         context.Token = token;
                     return Task.CompletedTask;
+                },
+                // A validly-signed, unexpired token can still have been logged out — check the
+                // server-side UserSession record (set inactive by AccountController.logout) so
+                // logout actually revokes access instead of only being a no-op DB write.
+                OnTokenValidated = async context =>
+                {
+                    var sidClaim = context.Principal?.FindFirstValue("sid");
+                    if (!Guid.TryParse(sidClaim, out var sessionId))
+                    {
+                        context.Fail("Token missing a valid session id.");
+                        return;
+                    }
+                    var sessionRepository = context.HttpContext.RequestServices.GetRequiredService<ISessionRepository>();
+                    var session = await sessionRepository.FindByIdAsync(sessionId);
+                    if (session == null || !session.IsActive)
+                        context.Fail("Session has been logged out. Please log in again.");
                 }
             };
         });
         builder.Services.AddAuthorization();
+        // "auth" policy: per-client-IP fixed window, applied to AccountController (login/register/OTP/
+        // password-reset) — deliberately generous for now, see Constants/Constant.cs to tighten later.
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = Constant.AuthRateLimitPermits,
+                    Window = TimeSpan.FromSeconds(Constant.AuthRateLimitWindowSeconds),
+                    QueueLimit = Constant.AuthRateLimitQueueLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                }));
+        });
         builder.Services.AddSignalR().AddJsonProtocol(options =>
         {
             options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -112,6 +146,7 @@ public partial class Program
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseRateLimiter();
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
         using (var scope = app.Services.CreateScope())

@@ -8,8 +8,9 @@
         public string email { get; set; }
         public string? phoneNumber { get; set; }
         public string displayName { get; set; }
-        public pharmacyProfileDTO? activeProfile { get; set; }   
+        public pharmacyProfileDTO? activeProfile { get; set; }
         public pharmacyProfileDTO? pendingProfile { get; set; }
+        public string? rejectionReason { get; set; }
         public bool isRegistered { get; set; }= true;
     }
 }

@@ -43,6 +43,7 @@ namespace Med_Map.Repositories.PharmacyRepos
                 // 3. Add to context and Link to the Pharmacy
                 _context.PharmacyProfile.Add(newProfile);
                 pharmacy.PendingProfile = newProfile;
+                pharmacy.RejectionReason = null;
 
                 // 4. Save everything
                 await _context.SaveChangesAsync();
@@ -144,7 +145,23 @@ namespace Med_Map.Repositories.PharmacyRepos
             pharmacy.ActiveProfileId = pharmacy.PendingProfile!.Id;
             pharmacy.PendingProfile = null;
             pharmacy.PendingProfileId = null;
+            pharmacy.RejectionReason = null;
 
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RejectProfileAsync(string userId, string reason)
+        {
+            var pharmacy = await _context.Pharmacy
+                .Include(p => p.PendingProfile)
+                .FirstOrDefaultAsync(p => p.ApplicationUserId == userId);
+
+            if (pharmacy == null || pharmacy.PendingProfile == null) return false;
+
+            // PendingProfileId is left intact so the pharmacy can still see what
+            // they submitted (and edit/resubmit it) after seeing the reason.
+            pharmacy.RejectionReason = reason;
 
             await _context.SaveChangesAsync();
             return true;

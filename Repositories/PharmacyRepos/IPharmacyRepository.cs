@@ -5,6 +5,7 @@
         Task SaveToPendingAsync(string userId, PharmacyProfile profile);
         Task UpdateInstantFieldsAsync(string userId, PharmacyDirectUpdateDTO fields);
         Task<bool> ActivateProfileAsync(string userId);
+        Task<bool> RejectProfileAsync(string userId, string reason);
         Task<Pharmacy?> GetByIdAsync(string id);
         Task<(List<Pharmacy>? items, int totalCount)> GetByNameAsync(string name, int page, int pageSize = 10);
         Task<(List<Pharmacy> items, int totalCount)> GetNearestPharmacyAsync(

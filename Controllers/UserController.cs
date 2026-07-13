@@ -161,7 +161,8 @@ namespace Med_Map.Controllers
                         licenseNumber = phar.PendingProfile.LicenseNumber,
                         licenseImageUrls = PendingLicenseImageUrls,
                         nationalIdUrls = PendingNationalIdUrls
-                    }
+                    },
+                    rejectionReason = phar.RejectionReason
                 };
                 return SuccessResponse(data, "Pharmacy retrieved successfully", SuccessCodes.DataRetrieved);
             }

@@ -6,6 +6,7 @@
         public const string OK = "code_excuted_successfully";
         // Authentication & Registration
         public const string LoginSuccess = "login_success";
+        public const string LogoutSuccess = "logout_success";
         public const string RegistrationPending = "registration_pending_otp";
         public const string AccountVerified = "account_activated";
         public const string PasswordResetPending = "password_reset_pending_otp";

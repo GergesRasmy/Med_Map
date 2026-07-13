@@ -24,5 +24,9 @@ namespace Med_Map.Models.pharmacy
         public Guid? PendingProfileId { get; set; }
         [ForeignKey("PendingProfileId")]
         public PharmacyProfile? PendingProfile { get; set; }
+
+        // Reason the admin rejected PendingProfile. Set on reject, cleared whenever
+        // a new PendingProfile is submitted (register/update) or on activation.
+        public string? RejectionReason { get; set; }
     }
 }
