@@ -16,6 +16,10 @@ This downloads all the NuGet packages.
 c)Update the Database:
 If you used Entity Framework (EF) Core, they need to create the local database schema.
 --dotnet ef database update--
+d)Config:
+Copy appsettings.Example.json to appsettings.json (this file is gitignored since it holds
+real secrets locally). The JWT key in the example already works out of the box; the
+Kashier and Mailtrap values are placeholders and only needed if testing payments/emails.
 
 #3. calling the API
 	http://localhost:5136/api/"controller name"/"action name"/

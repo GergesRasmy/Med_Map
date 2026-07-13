@@ -365,6 +365,7 @@ FodyWeavers.xsd
 appsettings.json
 appsettings.Development.json
 appsettings.*.json
+!appsettings.Example.json
 
 # Postman settings and collections
 
